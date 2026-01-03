@@ -1,9 +1,49 @@
 document.addEventListener('DOMContentLoaded', function() {
+    initPageLoader();
     checkExistingSession();
     initTabs();
     initForms();
     initPasswordToggles();
 });
+
+function initPageLoader() {
+    const shaderFrame = document.querySelector('.shader-frame');
+    const body = document.body;
+    let shaderLoaded = false;
+    let minTimeElapsed = false;
+    
+    const minLoadTime = 800;
+    
+    setTimeout(() => {
+        minTimeElapsed = true;
+        tryRevealPage();
+    }, minLoadTime);
+    
+    function tryRevealPage() {
+        if (shaderLoaded && minTimeElapsed) {
+            body.classList.remove('loading');
+        }
+    }
+    
+    if (shaderFrame) {
+        shaderFrame.addEventListener('load', function() {
+            setTimeout(() => {
+                shaderLoaded = true;
+                tryRevealPage();
+            }, 100);
+        });
+        
+        setTimeout(() => {
+            if (!shaderLoaded) {
+                shaderLoaded = true;
+                tryRevealPage();
+            }
+        }, 5000);
+    } else {
+        shaderLoaded = true;
+        tryRevealPage();
+    }
+}
 
 async function checkExistingSession() {
     const token = localStorage.getItem('access_token');
@@ -24,14 +64,21 @@ async function checkExistingSession() {
 }
 
 function initTabs() {
-    const tabs = document.querySelectorAll('.tab');
+    const tabs = document.querySelectorAll('.nav-item');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
 
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
-            tabs.forEach(t => t.classList.remove('active'));
+            if (this.classList.contains('active')) return;
+
+            tabs.forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+
             this.classList.add('active');
+            this.setAttribute('aria-selected', 'true');
 
             clearMessages();
 
@@ -81,7 +128,7 @@ async function handleLogin(event) {
 
         if (response.ok) {
             localStorage.setItem('access_token', data.access_token);
-            showSuccess('Login successful! Redirecting...');
+            showSuccess('Welcome back! Redirecting to your adventures...');
             setTimeout(() => {
                 window.location.href = '/dashboard';
             }, 500);
@@ -132,7 +179,7 @@ async function handleRegister(event) {
         const data = await response.json();
 
         if (response.ok) {
-            showSuccess('Account created successfully! You can now sign in.');
+            showSuccess('Account created! Time to explore the world!');
             document.getElementById('register-form').reset();
             
             setTimeout(() => {

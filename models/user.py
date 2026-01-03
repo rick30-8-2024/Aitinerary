@@ -7,6 +7,7 @@ from datetime import datetime
 
 class UserCreate(BaseModel):
     """Schema for user registration."""
+    name: str = Field(..., min_length=1)
     email: EmailStr
     password: str = Field(..., min_length=6)
 
@@ -20,6 +21,7 @@ class UserLogin(BaseModel):
 class UserInDB(BaseModel):
     """Schema for user stored in database."""
     id: str
+    name: str
     email: str
     password_hash: str
     created_at: datetime
@@ -31,6 +33,7 @@ class UserInDB(BaseModel):
 class UserResponse(BaseModel):
     """Schema for user response (without sensitive data)."""
     id: str
+    name: str
     email: str
     created_at: datetime
 

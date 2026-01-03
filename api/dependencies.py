@@ -49,6 +49,7 @@ async def get_current_user(token: Optional[str] = Depends(get_token_from_request
     
     return UserResponse(
         id=str(user["_id"]),
+        name=user.get("name", user["email"].split("@")[0]),
         email=user["email"],
         created_at=user["created_at"]
     )
@@ -71,6 +72,7 @@ async def get_current_user_optional(
     
     return UserResponse(
         id=str(user["_id"]),
+        name=user.get("name", user["email"].split("@")[0]),
         email=user["email"],
         created_at=user["created_at"]
     )

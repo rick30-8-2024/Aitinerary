@@ -40,17 +40,6 @@ class GenerationError(GeminiServiceError):
     pass
 
 
-class TranscriptAnalysisSchema(BaseModel):
-    """Schema for transcript analysis response."""
-    destination: str
-    country: Optional[str] = None
-    places_mentioned: list[str]
-    activities_mentioned: list[str]
-    local_tips: list[str]
-    warnings: list[str]
-    estimated_costs: dict
-    best_time_to_visit: Optional[str] = None
-    key_highlights: list[str]
 
 
 class GeminiService:
@@ -231,7 +220,6 @@ IMPORTANT GUIDELINES:
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=TranscriptAnalysisSchema,
                     temperature=0.3,
                     top_p=0.95,
                 )
@@ -243,14 +231,14 @@ IMPORTANT GUIDELINES:
             data = json.loads(response.text)
             
             return TranscriptAnalysis(
-                destination=data.get("destination", "Unknown"),
-                places_mentioned=data.get("places_mentioned", []),
-                activities_mentioned=data.get("activities_mentioned", []),
-                local_tips=data.get("local_tips", []),
-                warnings=data.get("warnings", []),
-                estimated_costs=data.get("estimated_costs", {}),
+                destination=data.get("destination") or "Unknown",
+                places_mentioned=data.get("places_mentioned") or [],
+                activities_mentioned=data.get("activities_mentioned") or [],
+                local_tips=data.get("local_tips") or [],
+                warnings=data.get("warnings") or [],
+                estimated_costs=data.get("estimated_costs") or {},
                 best_time_to_visit=data.get("best_time_to_visit"),
-                key_highlights=data.get("key_highlights", [])
+                key_highlights=data.get("key_highlights") or []
             )
             
         except json.JSONDecodeError as e:

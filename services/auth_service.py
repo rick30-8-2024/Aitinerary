@@ -73,6 +73,7 @@ async def create_user(user_data: UserCreate) -> UserResponse:
     collection = database.get_collection("users")
     
     user_doc = {
+        "name": user_data.name,
         "email": user_data.email,
         "password_hash": hash_password(user_data.password),
         "created_at": datetime.utcnow()
@@ -82,6 +83,7 @@ async def create_user(user_data: UserCreate) -> UserResponse:
     
     return UserResponse(
         id=str(result.inserted_id),
+        name=user_data.name,
         email=user_data.email,
         created_at=user_doc["created_at"]
     )

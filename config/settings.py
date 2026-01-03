@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     JWT_SECRET: str = "your-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 5760  # 4 days
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     APP_NAME: str = "Aitinerary"

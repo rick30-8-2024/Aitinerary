@@ -13,8 +13,8 @@ class UserPreferences(BaseModel):
     
     budget: float = Field(..., gt=0, description="Total budget for the trip")
     currency: str = Field(default="USD", description="Currency code (e.g., USD, EUR, INR)")
-    trip_type: Literal["family", "friends", "solo", "couple"] = Field(
-        ..., 
+    trip_type: Optional[Literal["family", "friends", "solo", "couple"]] = Field(
+        default="solo",
         description="Type of trip based on travelers"
     )
     activity_style: Literal["sporty", "relaxing", "mixed", "adventure", "cultural"] = Field(

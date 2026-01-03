@@ -6,6 +6,8 @@ Provides endpoints for itinerary generation, status checking, and CRUD operation
 
 import uuid
 import asyncio
+import logging
+import traceback
 from typing import Optional, Literal
 from datetime import datetime
 
@@ -13,7 +15,10 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, status
 from pydantic import BaseModel, Field, HttpUrl
 from bson import ObjectId
 
+logger = logging.getLogger(__name__)
+
 from config.database import database
+from config.logging_utils import log_debug, log_step, log_success, log_error, log_progress
 from api.dependencies import get_current_user
 from models.user import UserResponse
 from models.preferences import UserPreferences
@@ -42,6 +47,7 @@ class GenerateRequest(BaseModel):
     )
     preferences: UserPreferences = Field(..., description="User travel preferences")
     title: Optional[str] = Field(default=None, description="Optional custom title")
+    destination_name: Optional[str] = Field(default=None, description="Name of destination for itinerary naming")
 
 
 class GenerateResponse(BaseModel):
@@ -79,7 +85,8 @@ async def process_itinerary_generation(
     user_id: str,
     youtube_urls: list[str],
     preferences: UserPreferences,
-    title: Optional[str]
+    title: Optional[str],
+    destination_name: Optional[str] = None
 ):
     """
     Background task to process itinerary generation.
@@ -92,7 +99,13 @@ async def process_itinerary_generation(
     """
     collection = get_itineraries_collection()
     
+    log_step("Starting itinerary generation", 1, 4)
+    log_debug(f"itinerary_id={itinerary_id}, user_id={user_id}", prefix="ITINERARY")
+    log_debug(f"YouTube URLs: {youtube_urls}", prefix="ITINERARY")
+    log_debug(f"Destination: {destination_name or 'Not specified'}", prefix="ITINERARY")
+    
     try:
+        log_step("Extracting video transcripts", 1, 4)
         await collection.update_one(
             {"_id": ObjectId(itinerary_id)},
             {"$set": {"progress": 10, "status_message": "Extracting video transcripts..."}}
@@ -103,9 +116,11 @@ async def process_itinerary_generation(
         
         for i, url in enumerate(youtube_urls):
             try:
+                log_progress(i + 1, len(youtube_urls), f"Processing video: {url[:50]}...", prefix="TRANSCRIPT")
                 result = await youtube_service.process_video(url)
                 video_results.append(result)
                 video_titles.append(result.metadata.title)
+                log_success(f"Extracted transcript: {result.metadata.title}", prefix="TRANSCRIPT")
                 
                 progress = 10 + ((i + 1) / len(youtube_urls)) * 30
                 await collection.update_one(
@@ -113,26 +128,39 @@ async def process_itinerary_generation(
                     {"$set": {"progress": int(progress)}}
                 )
             except YouTubeServiceError as e:
+                log_error(f"Failed to process video {url}: {str(e)}", prefix="TRANSCRIPT")
+                logger.error(f"[ITINERARY] Traceback: {traceback.format_exc()}")
                 raise Exception(f"Failed to process video {url}: {str(e)}")
         
         if not video_results:
+            log_error("No videos could be processed", prefix="ITINERARY")
             raise Exception("No videos could be processed")
         
+        log_success(f"All {len(video_results)} transcripts extracted successfully", prefix="TRANSCRIPT")
+        
+        log_step("Analyzing video content with Gemini AI", 2, 4)
         await collection.update_one(
             {"_id": ObjectId(itinerary_id)},
             {"$set": {"progress": 50, "status_message": "Analyzing video content..."}}
         )
         
+        log_debug(f"Sending {len(video_results)} transcripts to Gemini for analysis", prefix="GEMINI")
         analysis, itinerary = await gemini_service.generate_itinerary_from_videos(
             video_results, preferences
         )
+        log_success(f"Gemini analysis complete. Detected destination: {analysis.destination}", prefix="GEMINI")
         
+        log_step("Finalizing itinerary", 3, 4)
         await collection.update_one(
             {"_id": ObjectId(itinerary_id)},
             {"$set": {"progress": 90, "status_message": "Finalizing itinerary..."}}
         )
         
-        final_title = title or itinerary.title or f"Trip to {analysis.destination}"
+        if destination_name:
+            final_title = f"{destination_name} Trip - {datetime.utcnow().strftime('%B %Y')}"
+        else:
+            final_title = title or itinerary.title or f"Trip to {analysis.destination}"
+        
         share_code = str(uuid.uuid4())[:8]
         
         itinerary_data = itinerary.model_dump()
@@ -142,6 +170,7 @@ async def process_itinerary_generation(
             "video_titles": video_titles,
             "user_preferences": preferences.model_dump(),
             "transcript_analysis": analysis.model_dump(),
+            "destination_name": destination_name,
             "status": "completed",
             "progress": 100,
             "status_message": "Itinerary generated successfully",
@@ -154,7 +183,12 @@ async def process_itinerary_generation(
             {"$set": itinerary_data}
         )
         
+        log_step("Itinerary saved to database", 4, 4)
+        log_success(f"Generation completed successfully for itinerary_id={itinerary_id}", prefix="ITINERARY")
+        
     except Exception as e:
+        log_error(f"Generation failed: {str(e)}", prefix="ITINERARY")
+        logger.error(f"[ITINERARY] Full traceback: {traceback.format_exc()}")
         await collection.update_one(
             {"_id": ObjectId(itinerary_id)},
             {
@@ -178,26 +212,38 @@ async def generate_itinerary(
     
     Returns immediately with an itinerary ID for status polling.
     """
+    log_debug(f"Received generation request from user_id={current_user.id}", prefix="GENERATE")
+    log_debug(f"YouTube URLs: {request.youtube_urls}", prefix="GENERATE")
+    log_debug(f"Destination: {request.destination_name or 'Not specified'}", prefix="GENERATE")
+    
     collection = get_itineraries_collection()
+    
+    initial_title = request.title or "Generating..."
+    if request.destination_name:
+        initial_title = f"{request.destination_name} Trip"
     
     initial_record = {
         "user_id": current_user.id,
         "youtube_urls": request.youtube_urls,
         "user_preferences": request.preferences.model_dump(),
+        "destination_name": request.destination_name,
         "status": "generating",
         "progress": 0,
         "status_message": "Starting generation...",
-        "title": request.title or "Generating...",
-        "destination": "",
+        "title": initial_title,
+        "destination": request.destination_name or "",
         "summary": "",
         "days": [],
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow(),
-        "is_public": False
+        "is_public": False,
+        "viewed": False
     }
     
+    log_debug("Inserting initial record into database...", prefix="GENERATE")
     result = await collection.insert_one(initial_record)
     itinerary_id = str(result.inserted_id)
+    log_success(f"Created itinerary record with id={itinerary_id}", prefix="GENERATE")
     
     background_tasks.add_task(
         process_itinerary_generation,
@@ -205,13 +251,15 @@ async def generate_itinerary(
         current_user.id,
         request.youtube_urls,
         request.preferences,
-        request.title
+        request.title,
+        request.destination_name
     )
+    logger.info(f"[GENERATE] Background task queued for itinerary_id={itinerary_id}")
     
     return GenerateResponse(
         itinerary_id=itinerary_id,
         status="generating",
-        message="Itinerary generation started. Poll /status/{id} for updates."
+        message="Your itinerary generation is in progress and will take some time. Once generated, you'll find it in 'My Itineraries'."
     )
 
 
@@ -240,6 +288,41 @@ async def get_generation_status(
         message=itinerary.get("status_message"),
         progress=itinerary.get("progress", 0)
     )
+
+
+@router.get("/list", response_model=list[ItineraryListItem])
+async def list_itineraries(
+    skip: int = 0,
+    limit: int = 20,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """List all itineraries for the current user including in-progress ones."""
+    collection = get_itineraries_collection()
+    
+    cursor = collection.find(
+        {"user_id": current_user.id}
+    ).sort("created_at", -1).skip(skip).limit(limit)
+    
+    itineraries = []
+    async for itinerary in cursor:
+        status = itinerary.get("status", "completed")
+        itineraries.append(ItineraryListItem(
+            id=str(itinerary["_id"]),
+            title=itinerary.get("title", "Generating..."),
+            destination=itinerary.get("destination", ""),
+            summary=itinerary.get("summary", ""),
+            total_days=len(itinerary.get("days", [])),
+            total_budget_estimate=itinerary.get("total_budget_estimate", 0),
+            currency=itinerary.get("currency", "USD"),
+            created_at=itinerary.get("created_at", datetime.utcnow()),
+            is_public=itinerary.get("is_public", False),
+            viewed=itinerary.get("viewed", False),
+            status=status,
+            status_message=itinerary.get("status_message"),
+            progress=itinerary.get("progress", 0) if status == "generating" else None
+        ))
+    
+    return itineraries
 
 
 @router.get("/{itinerary_id}", response_model=ItineraryResponse)
@@ -326,34 +409,26 @@ async def get_shared_itinerary(share_code: str):
     )
 
 
-@router.get("/list", response_model=list[ItineraryListItem])
-async def list_itineraries(
-    skip: int = 0,
-    limit: int = 20,
+@router.patch("/{itinerary_id}/viewed")
+async def mark_as_viewed(
+    itinerary_id: str,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """List all itineraries for the current user."""
+    """Mark an itinerary as viewed."""
     collection = get_itineraries_collection()
     
-    cursor = collection.find(
-        {"user_id": current_user.id, "status": "completed"}
-    ).sort("created_at", -1).skip(skip).limit(limit)
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(itinerary_id), "user_id": current_user.id},
+            {"$set": {"viewed": True, "updated_at": datetime.utcnow()}}
+        )
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid itinerary ID")
     
-    itineraries = []
-    async for itinerary in cursor:
-        itineraries.append(ItineraryListItem(
-            id=str(itinerary["_id"]),
-            title=itinerary.get("title", ""),
-            destination=itinerary.get("destination", ""),
-            summary=itinerary.get("summary", ""),
-            total_days=len(itinerary.get("days", [])),
-            total_budget_estimate=itinerary.get("total_budget_estimate", 0),
-            currency=itinerary.get("currency", "USD"),
-            created_at=itinerary.get("created_at", datetime.utcnow()),
-            is_public=itinerary.get("is_public", False)
-        ))
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
     
-    return itineraries
+    return {"message": "Marked as viewed"}
 
 
 @router.patch("/{itinerary_id}/visibility")

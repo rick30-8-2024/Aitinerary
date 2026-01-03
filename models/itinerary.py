@@ -176,6 +176,10 @@ class ItineraryListItem(BaseModel):
     currency: str
     created_at: datetime
     is_public: bool
+    viewed: bool = False
+    status: str = "completed"
+    status_message: Optional[str] = None
+    progress: Optional[int] = None
 
 
 from models.preferences import UserPreferences

@@ -1,375 +1,812 @@
-let currentUser = null;
-let generatingItineraryId = null;
-let pollInterval = null;
+(function () {
+    const API_BASE = '';
+    let accessToken = localStorage.getItem('access_token');
+    let currentStep = 1;
+    const totalSteps = 3;
+    let itineraries = [];
 
-document.addEventListener('DOMContentLoaded', async function() {
-    currentUser = await checkAuth();
-    if (!currentUser) return;
-    
-    displayUserInfo();
-    initLogout();
-    initUrlInputs();
-    initForm();
-    loadItineraries();
-});
-
-async function checkAuth() {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-        window.location.href = '/login';
-        return null;
-    }
-
-    try {
-        const response = await fetch('/api/auth/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+    function initPageLoader() {
+        const shaderFrame = document.querySelector('.shader-frame');
+        const body = document.body;
+        let shaderLoaded = false;
+        let minTimeElapsed = false;
         
-        if (!response.ok) {
-            localStorage.removeItem('access_token');
-            window.location.href = '/login';
-            return null;
+        const minLoadTime = 800;
+        
+        setTimeout(() => {
+            minTimeElapsed = true;
+            tryRevealPage();
+        }, minLoadTime);
+        
+        function tryRevealPage() {
+            if (shaderLoaded && minTimeElapsed) {
+                body.classList.remove('loading');
+            }
         }
         
-        return await response.json();
-    } catch (error) {
-        window.location.href = '/login';
-        return null;
-    }
-}
-
-function displayUserInfo() {
-    document.getElementById('user-email').textContent = currentUser.email;
-}
-
-function initLogout() {
-    document.getElementById('logout-btn').addEventListener('click', async function() {
-        try {
-            await fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+        if (shaderFrame) {
+            shaderFrame.addEventListener('load', function() {
+                setTimeout(() => {
+                    shaderLoaded = true;
+                    tryRevealPage();
+                }, 100);
             });
-        } catch (e) {}
-        
-        localStorage.removeItem('access_token');
-        window.location.href = '/login';
-    });
-}
-
-function initUrlInputs() {
-    const addBtn = document.getElementById('add-url-btn');
-    const urlInputsContainer = document.getElementById('url-inputs');
-    
-    addBtn.addEventListener('click', function() {
-        const inputs = urlInputsContainer.querySelectorAll('.url-input-group');
-        if (inputs.length >= 5) return;
-        
-        const newInput = createUrlInput();
-        urlInputsContainer.appendChild(newInput);
-        updateAddButtonState();
-        updateRemoveButtons();
-    });
-    
-    urlInputsContainer.querySelector('.youtube-url').addEventListener('blur', validateUrl);
-    updateRemoveButtons();
-}
-
-function createUrlInput() {
-    const div = document.createElement('div');
-    div.className = 'url-input-group';
-    div.innerHTML = `
-        <input type="url" class="youtube-url" placeholder="https://youtube.com/watch?v=..." required>
-        <span class="url-status"></span>
-        <button type="button" class="btn-remove-url">×</button>
-    `;
-    
-    div.querySelector('.youtube-url').addEventListener('blur', validateUrl);
-    div.querySelector('.btn-remove-url').addEventListener('click', function() {
-        div.remove();
-        updateAddButtonState();
-        updateRemoveButtons();
-    });
-    
-    return div;
-}
-
-function updateAddButtonState() {
-    const addBtn = document.getElementById('add-url-btn');
-    const inputs = document.querySelectorAll('.url-input-group');
-    addBtn.disabled = inputs.length >= 5;
-}
-
-function updateRemoveButtons() {
-    const inputs = document.querySelectorAll('.url-input-group');
-    inputs.forEach((group, index) => {
-        const removeBtn = group.querySelector('.btn-remove-url');
-        removeBtn.style.display = inputs.length > 1 ? 'block' : 'none';
-    });
-}
-
-async function validateUrl(event) {
-    const input = event.target;
-    const status = input.nextElementSibling;
-    const url = input.value.trim();
-    
-    if (!url) {
-        status.className = 'url-status';
-        return;
-    }
-    
-    status.className = 'url-status loading';
-    
-    try {
-        const response = await fetch('/api/youtube/validate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            },
-            body: JSON.stringify({ url })
-        });
-        
-        const data = await response.json();
-        
-        if (data.valid) {
-            status.className = 'url-status valid';
-            input.title = data.title;
+            
+            setTimeout(() => {
+                if (!shaderLoaded) {
+                    shaderLoaded = true;
+                    tryRevealPage();
+                }
+            }, 5000);
         } else {
-            status.className = 'url-status invalid';
-            input.title = data.error || 'Invalid URL';
+            shaderLoaded = true;
+            tryRevealPage();
         }
-    } catch (error) {
-        status.className = 'url-status invalid';
     }
-}
 
-function initForm() {
-    const form = document.getElementById('generate-form');
-    form.addEventListener('submit', handleGenerate);
-}
-
-async function handleGenerate(event) {
-    event.preventDefault();
-    
-    const btn = document.getElementById('generate-btn');
-    clearError();
-    
-    const urls = Array.from(document.querySelectorAll('.youtube-url'))
-        .map(input => input.value.trim())
-        .filter(url => url);
-    
-    if (urls.length === 0) {
-        showError('Please add at least one YouTube URL');
-        return;
-    }
-    
-    const preferences = {
-        budget: parseFloat(document.getElementById('budget').value),
-        currency: document.getElementById('currency').value,
-        trip_duration_days: parseInt(document.getElementById('trip-duration').value),
-        trip_type: document.getElementById('trip-type').value,
-        num_travelers: parseInt(document.getElementById('num-travelers').value),
-        activity_style: document.getElementById('activity-style').value,
-        accommodation_preference: document.getElementById('accommodation').value,
-        start_date: document.getElementById('start-date').value || null,
-        dietary_restrictions: Array.from(document.querySelectorAll('input[name="dietary"]:checked'))
-            .map(cb => cb.value),
-        mobility_constraints: document.getElementById('mobility').value || null,
-        must_visit_places: document.getElementById('must-visit').value
-            ? document.getElementById('must-visit').value.split(',').map(s => s.trim())
-            : [],
-        additional_notes: document.getElementById('additional-notes').value || null
-    };
-    
-    if (!preferences.budget || !preferences.trip_duration_days || !preferences.trip_type || !preferences.num_travelers) {
-        showError('Please fill in all required fields');
-        return;
-    }
-    
-    setLoading(btn, true);
-    showModal();
-    
-    try {
-        const response = await fetch('/api/itinerary/generate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            },
-            body: JSON.stringify({
-                youtube_urls: urls,
-                preferences: preferences
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            generatingItineraryId = data.itinerary_id;
-            startPolling();
-        } else {
-            hideModal();
-            showError(data.detail || 'Failed to start generation');
-            setLoading(btn, false);
+    async function verifyAndInit() {
+        if (!accessToken) {
+            window.location.href = '/login';
+            return;
         }
-    } catch (error) {
-        hideModal();
-        showError('Connection error. Please try again.');
-        setLoading(btn, false);
-    }
-}
 
-function startPolling() {
-    if (pollInterval) clearInterval(pollInterval);
-    
-    pollInterval = setInterval(async () => {
         try {
-            const response = await fetch(`/api/itinerary/status/${generatingItineraryId}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            const response = await fetch(`${API_BASE}/api/auth/verify`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
             });
             
             const data = await response.json();
             
-            updateProgress(data.progress || 0, data.message);
+            if (!response.ok || !data.valid) {
+                localStorage.removeItem('access_token');
+                window.location.href = '/login';
+                return;
+            }
             
-            if (data.status === 'completed') {
-                clearInterval(pollInterval);
-                pollInterval = null;
-                window.location.href = `/itinerary/${generatingItineraryId}`;
-            } else if (data.status === 'failed') {
-                clearInterval(pollInterval);
-                pollInterval = null;
-                hideModal();
-                showError(data.message || 'Generation failed. Please try again.');
-                setLoading(document.getElementById('generate-btn'), false);
-            }
+            init();
         } catch (error) {
-            clearInterval(pollInterval);
-            pollInterval = null;
-            hideModal();
-            showError('Connection error. Please try again.');
-            setLoading(document.getElementById('generate-btn'), false);
+            console.error('Auth verification failed:', error);
+            localStorage.removeItem('access_token');
+            window.location.href = '/login';
         }
-    }, 2000);
-}
+    }
 
-function updateProgress(progress, message) {
-    const progressFill = document.getElementById('progress-fill');
-    const progressText = document.getElementById('progress-text');
-    
-    progressFill.style.width = `${progress}%`;
-    progressText.textContent = message || `${progress}% complete`;
-    
-    const steps = ['step-1', 'step-2', 'step-3', 'step-4'];
-    const thresholds = [10, 40, 75, 90];
-    
-    steps.forEach((stepId, index) => {
-        const step = document.getElementById(stepId);
-        if (progress >= thresholds[index]) {
-            if (index === steps.length - 1 || progress < thresholds[index + 1]) {
-                step.className = 'progress-step active';
-            } else {
-                step.className = 'progress-step completed';
+    async function init() {
+        await loadUserInfo();
+        setupTabSwitching();
+        setupLogoutModal();
+        setupDeleteModal();
+        setupWizardNavigation();
+        setupUrlInputs();
+        setupFormSubmission();
+        setupSuccessModal();
+        setupSearch();
+        loadItineraries();
+    }
+
+    async function loadUserInfo() {
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/me`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (!res.ok) throw new Error('Failed to fetch user info');
+            const data = await res.json();
+            document.getElementById('user-name').textContent = data.name || data.email.split('@')[0];
+        } catch (err) {
+            console.error(err);
+            document.getElementById('user-name').textContent = 'User';
+        }
+    }
+
+    function setupTabSwitching() {
+        const island = document.querySelector('.floating-island');
+        const tabs = document.querySelectorAll('.island-tab');
+        const createSection = document.getElementById('section-create');
+        const historySection = document.getElementById('section-history');
+
+        const pill = document.createElement('div');
+        pill.className = 'island-pill';
+        island.insertBefore(pill, island.firstChild);
+
+        const ICON_SIZE = 18;
+        const TAB_PADDING_H = 14;
+        const TAB_GAP = 4;
+        const COLLAPSED_TAB_WIDTH = ICON_SIZE + (TAB_PADDING_H * 2);
+        
+        let expandedWidths = { create: 0, history: 0 };
+        
+        function measureExpandedWidths() {
+            tabs.forEach(tab => {
+                const span = tab.querySelector('span');
+                const section = tab.dataset.section;
+                const wasActive = tab.classList.contains('active');
+                
+                span.style.cssText = 'transition: none !important; max-width: 150px !important; opacity: 1 !important; margin-left: 4px !important;';
+                if (!wasActive) tab.classList.add('active');
+                
+                void tab.offsetWidth;
+                
+                expandedWidths[section] = tab.getBoundingClientRect().width;
+                
+                span.style.cssText = '';
+                if (!wasActive) tab.classList.remove('active');
+            });
+        }
+
+        function updatePill(animate = true) {
+            const activeTab = document.querySelector('.island-tab.active');
+            if (!activeTab) return;
+
+            const section = activeTab.dataset.section;
+            const width = expandedWidths[section] || 150;
+            
+            let offsetX = 0;
+            if (section === 'history') {
+                offsetX = COLLAPSED_TAB_WIDTH + TAB_GAP;
             }
+
+            if (!animate) {
+                pill.style.transition = 'none';
+            }
+            
+            pill.style.transform = `translateX(${offsetX}px)`;
+            pill.style.width = `${width}px`;
+
+            if (!animate) {
+                void pill.offsetWidth;
+                pill.style.transition = '';
+            }
+        }
+
+        measureExpandedWidths();
+        updatePill(false);
+
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                measureExpandedWidths();
+                updatePill(false);
+            });
         } else {
-            step.className = 'progress-step';
+            setTimeout(() => {
+                measureExpandedWidths();
+                updatePill(false);
+            }, 100);
         }
-    });
-}
 
-function showModal() {
-    document.getElementById('progress-modal').classList.add('show');
-    updateProgress(0, 'Starting...');
-}
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                if (tab.classList.contains('active')) return;
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
 
-function hideModal() {
-    document.getElementById('progress-modal').classList.remove('show');
-}
+                updatePill(true);
 
-async function loadItineraries() {
-    const container = document.getElementById('itinerary-list');
-    
-    try {
-        const response = await fetch('/api/itinerary/list', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+                const section = tab.dataset.section;
+                if (section === 'create') {
+                    createSection.classList.add('active');
+                    historySection.classList.remove('active');
+                } else {
+                    createSection.classList.remove('active');
+                    historySection.classList.add('active');
+                    loadItineraries();
+                }
+            });
         });
-        
-        if (!response.ok) throw new Error('Failed to load');
-        
-        const itineraries = await response.json();
-        
-        if (itineraries.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                    </svg>
-                    <p>No itineraries yet.<br>Create your first one!</p>
-                </div>
-            `;
-            return;
+
+        window.addEventListener('resize', () => {
+            measureExpandedWidths();
+            updatePill(false);
+        });
+    }
+
+    function setupLogoutModal() {
+        const logoutBtn = document.getElementById('logout-btn');
+        const logoutModal = document.getElementById('logout-modal');
+        const cancelLogout = document.getElementById('cancel-logout');
+        const confirmLogout = document.getElementById('confirm-logout');
+
+        logoutBtn.addEventListener('click', () => {
+            logoutModal.classList.add('show');
+        });
+
+        cancelLogout.addEventListener('click', () => {
+            logoutModal.classList.remove('show');
+        });
+
+        confirmLogout.addEventListener('click', () => {
+            localStorage.removeItem('access_token');
+            window.location.href = '/login';
+        });
+
+        logoutModal.addEventListener('click', (e) => {
+            if (e.target === logoutModal) {
+                logoutModal.classList.remove('show');
+            }
+        });
+    }
+
+    let deleteTargetId = null;
+
+    function setupDeleteModal() {
+        const deleteModal = document.getElementById('delete-modal');
+        const cancelDelete = document.getElementById('cancel-delete');
+        const confirmDelete = document.getElementById('confirm-delete');
+
+        cancelDelete.addEventListener('click', () => {
+            deleteModal.classList.remove('show');
+            deleteTargetId = null;
+        });
+
+        confirmDelete.addEventListener('click', async () => {
+            if (!deleteTargetId) return;
+            
+            const btnText = confirmDelete.querySelector('.btn-text');
+            const btnLoader = confirmDelete.querySelector('.btn-loader');
+            
+            confirmDelete.disabled = true;
+            cancelDelete.disabled = true;
+            btnText.style.display = 'none';
+            btnLoader.style.display = 'flex';
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/itinerary/${deleteTargetId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                if (!res.ok) {
+                    throw new Error('Failed to delete itinerary');
+                }
+
+                const card = document.querySelector(`.itinerary-card[data-id="${deleteTargetId}"]`);
+                if (card) {
+                    card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.9)';
+                    setTimeout(() => card.remove(), 300);
+                }
+
+                itineraries = itineraries.filter(it => it.id !== deleteTargetId);
+
+                if (itineraries.length === 0) {
+                    const emptyState = document.getElementById('empty-history');
+                    emptyState.style.display = 'block';
+                    emptyState.querySelector('p').innerHTML = 'No itineraries yet.<br>Create your first one!';
+                }
+
+            } catch (err) {
+                console.error('Delete failed:', err);
+                alert('Failed to delete itinerary. Please try again.');
+            } finally {
+                confirmDelete.disabled = false;
+                cancelDelete.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoader.style.display = 'none';
+                deleteModal.classList.remove('show');
+                deleteTargetId = null;
+            }
+        });
+
+        deleteModal.addEventListener('click', (e) => {
+            if (e.target === deleteModal) {
+                deleteModal.classList.remove('show');
+                deleteTargetId = null;
+            }
+        });
+    }
+
+    function showDeleteModal(id) {
+        deleteTargetId = id;
+        document.getElementById('delete-modal').classList.add('show');
+    }
+
+    function setupWizardNavigation() {
+        const prevBtn = document.getElementById('btn-prev');
+        const nextBtn = document.getElementById('btn-next');
+        const generateBtn = document.getElementById('generate-btn');
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStep > 1) {
+                goToStep(currentStep - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (validateCurrentStep()) {
+                goToStep(currentStep + 1);
+            }
+        });
+    }
+
+    function goToStep(step) {
+        const panels = document.querySelectorAll('.wizard-panel');
+        const steps = document.querySelectorAll('.wizard-step');
+        const prevBtn = document.getElementById('btn-prev');
+        const nextBtn = document.getElementById('btn-next');
+        const generateBtn = document.getElementById('generate-btn');
+
+        panels.forEach(p => p.classList.remove('active'));
+        document.querySelector(`.wizard-panel[data-step="${step}"]`).classList.add('active');
+
+        steps.forEach((s, i) => {
+            s.classList.remove('active', 'completed');
+            if (i + 1 < step) s.classList.add('completed');
+            if (i + 1 === step) s.classList.add('active');
+        });
+
+        currentStep = step;
+
+        prevBtn.style.visibility = step === 1 ? 'hidden' : 'visible';
+
+        if (step === totalSteps) {
+            nextBtn.style.display = 'none';
+            generateBtn.style.display = 'flex';
+        } else {
+            nextBtn.style.display = 'flex';
+            generateBtn.style.display = 'none';
         }
-        
-        container.innerHTML = itineraries.map(it => `
-            <div class="itinerary-item" onclick="window.location.href='/itinerary/${it.id}'">
-                <h4>${escapeHtml(it.title)}</h4>
-                <p>${escapeHtml(it.destination)} • ${it.total_days} days</p>
-                <div class="itinerary-meta">
-                    <span>💰 ${it.total_budget_estimate.toLocaleString()} ${it.currency}</span>
-                    <span>📅 ${formatDate(it.created_at)}</span>
-                </div>
-            </div>
-        `).join('');
-    } catch (error) {
+    }
+
+    function validateCurrentStep() {
+        const errorEl = document.getElementById('error-message');
+        errorEl.classList.remove('show');
+        errorEl.textContent = '';
+
+        document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+
+        if (currentStep === 1) {
+            const urls = document.querySelectorAll('.youtube-url');
+            let hasValidUrl = false;
+            urls.forEach(input => {
+                if (input.value.trim() && isValidYouTubeUrl(input.value.trim())) {
+                    hasValidUrl = true;
+                } else if (input.value.trim()) {
+                    input.classList.add('error');
+                }
+            });
+            if (!hasValidUrl) {
+                errorEl.textContent = 'Please add at least one valid YouTube URL.';
+                errorEl.classList.add('show');
+                return false;
+            }
+        }
+
+        if (currentStep === 2) {
+            const requiredFields = ['destination-name', 'budget', 'trip-duration', 'num-travelers'];
+            let allValid = true;
+
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field.value || field.value.trim() === '') {
+                    field.classList.add('error');
+                    allValid = false;
+                }
+            });
+
+            if (!allValid) {
+                errorEl.textContent = 'Please fill in all required fields including your destination.';
+                errorEl.classList.add('show');
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function isValidYouTubeUrl(url) {
+        const patterns = [
+            /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=[\w-]+/,
+            /^(https?:\/\/)?(www\.)?youtu\.be\/[\w-]+/,
+            /^(https?:\/\/)?(www\.)?youtube\.com\/embed\/[\w-]+/
+        ];
+        return patterns.some(p => p.test(url));
+    }
+
+    function setupUrlInputs() {
+        const addBtn = document.getElementById('add-url-btn');
+        const container = document.getElementById('url-inputs');
+
+        addBtn.addEventListener('click', () => {
+            const count = container.querySelectorAll('.url-input-group').length;
+            if (count >= 5) {
+                addBtn.disabled = true;
+                return;
+            }
+
+            const group = document.createElement('div');
+            group.className = 'url-input-group';
+            group.innerHTML = `
+                <input type="url" class="youtube-url" placeholder="https://youtube.com/watch?v=..." required>
+                <span class="url-status"></span>
+                <button type="button" class="btn-remove-url">×</button>
+            `;
+            container.appendChild(group);
+
+            setupUrlValidation(group.querySelector('.youtube-url'));
+            group.querySelector('.btn-remove-url').addEventListener('click', () => {
+                group.remove();
+                updateAddButton();
+            });
+
+            updateAddButton();
+        });
+
+        const firstInput = container.querySelector('.youtube-url');
+        if (firstInput) setupUrlValidation(firstInput);
+
+        function updateAddButton() {
+            const count = container.querySelectorAll('.url-input-group').length;
+            addBtn.disabled = count >= 5;
+
+            const removeButtons = container.querySelectorAll('.btn-remove-url');
+            removeButtons.forEach((btn, i) => {
+                btn.style.display = count > 1 ? 'block' : 'none';
+            });
+        }
+    }
+
+    function setupUrlValidation(input) {
+        let timeout;
+        input.addEventListener('input', () => {
+            const status = input.nextElementSibling;
+            clearTimeout(timeout);
+            status.className = 'url-status';
+
+            if (!input.value.trim()) return;
+
+            status.className = 'url-status loading';
+            timeout = setTimeout(() => {
+                if (isValidYouTubeUrl(input.value.trim())) {
+                    status.className = 'url-status valid';
+                } else {
+                    status.className = 'url-status invalid';
+                }
+            }, 500);
+        });
+    }
+
+    function setupFormSubmission() {
+        const generateBtn = document.getElementById('generate-btn');
+        const progressModal = document.getElementById('progress-modal');
+        const successModal = document.getElementById('success-modal');
+
+        generateBtn.addEventListener('click', async () => {
+            if (!validateCurrentStep()) return;
+
+            const urls = Array.from(document.querySelectorAll('.youtube-url'))
+                .map(i => i.value.trim())
+                .filter(u => u && isValidYouTubeUrl(u));
+
+            const dietary = Array.from(document.querySelectorAll('input[name="dietary"]:checked'))
+                .map(c => c.value);
+
+            const mustVisit = document.getElementById('must-visit').value
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s);
+
+            const destinationName = document.getElementById('destination-name').value.trim();
+
+            const payload = {
+                youtube_urls: urls,
+                destination_name: destinationName || null,
+                preferences: {
+                    budget: parseFloat(document.getElementById('budget').value) || 1000,
+                    currency: document.getElementById('currency').value,
+                    trip_duration_days: parseInt(document.getElementById('trip-duration').value) || 7,
+                    num_travelers: parseInt(document.getElementById('num-travelers').value) || 1,
+                    activity_style: document.getElementById('activity-style').value,
+                    accommodation_preference: document.getElementById('accommodation').value,
+                    dietary_restrictions: dietary,
+                    mobility_constraints: document.getElementById('mobility').value || null,
+                    must_visit_places: mustVisit,
+                    start_date: document.getElementById('start-date').value || null,
+                    additional_notes: document.getElementById('additional-notes').value || null
+                }
+            };
+
+            generateBtn.disabled = true;
+            generateBtn.querySelector('.btn-text').style.display = 'none';
+            generateBtn.querySelector('.btn-loader').style.display = 'flex';
+
+            progressModal.classList.add('show');
+            updateProgress(0, 'Starting generation...');
+
+            try {
+                const steps = [
+                    { pct: 25, text: 'Extracting video transcripts...', step: 1 },
+                    { pct: 50, text: 'Analyzing content...', step: 2 },
+                    { pct: 75, text: 'Generating itinerary...', step: 3 },
+                    { pct: 90, text: 'Finalizing...', step: 4 }
+                ];
+
+                let stepIndex = 0;
+                const progressInterval = setInterval(() => {
+                    if (stepIndex < steps.length) {
+                        const s = steps[stepIndex];
+                        updateProgress(s.pct, s.text);
+                        document.getElementById(`prog-step-${s.step}`).classList.add('active');
+                        if (s.step > 1) {
+                            document.getElementById(`prog-step-${s.step - 1}`).classList.remove('active');
+                            document.getElementById(`prog-step-${s.step - 1}`).classList.add('completed');
+                        }
+                        stepIndex++;
+                    }
+                }, 2000);
+
+                const res = await fetch(`${API_BASE}/api/itinerary/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                clearInterval(progressInterval);
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed to generate itinerary');
+                }
+
+                updateProgress(100, 'Complete!');
+                document.querySelectorAll('.progress-step').forEach(s => {
+                    s.classList.remove('active');
+                    s.classList.add('completed');
+                });
+
+                setTimeout(() => {
+                    progressModal.classList.remove('show');
+                    successModal.classList.add('show');
+                    resetForm();
+                }, 1000);
+
+            } catch (err) {
+                progressModal.classList.remove('show');
+                const errorEl = document.getElementById('error-message');
+                errorEl.textContent = err.message;
+                errorEl.classList.add('show');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.querySelector('.btn-text').style.display = 'flex';
+                generateBtn.querySelector('.btn-loader').style.display = 'none';
+            }
+        });
+    }
+
+    function updateProgress(pct, text) {
+        document.getElementById('progress-fill').style.width = `${pct}%`;
+        document.getElementById('progress-text').textContent = text;
+        const statusEl = document.getElementById('generate-status');
+        if (statusEl) statusEl.textContent = text;
+    }
+
+    function resetForm() {
+        document.getElementById('generate-form').reset();
+        const container = document.getElementById('url-inputs');
         container.innerHTML = `
-            <div class="empty-state">
-                <p>Failed to load itineraries</p>
+            <div class="url-input-group">
+                <input type="url" class="youtube-url" placeholder="https://youtube.com/watch?v=..." required>
+                <span class="url-status"></span>
+                <button type="button" class="btn-remove-url" style="display: none;">×</button>
             </div>
         `;
+        setupUrlValidation(container.querySelector('.youtube-url'));
+        goToStep(1);
+
+        document.querySelectorAll('.progress-step').forEach(s => {
+            s.classList.remove('active', 'completed');
+        });
     }
-}
 
-function setLoading(button, isLoading) {
-    const btnText = button.querySelector('.btn-text');
-    const btnLoader = button.querySelector('.btn-loader');
-    const btnIcon = button.querySelector('svg:not(.spinner)');
+    function setupSuccessModal() {
+        const successModal = document.getElementById('success-modal');
+        const stayBtn = document.getElementById('stay-create');
+        const goBtn = document.getElementById('go-history');
 
-    if (isLoading) {
-        button.disabled = true;
-        if (btnText) btnText.style.display = 'none';
-        if (btnIcon) btnIcon.style.display = 'none';
-        if (btnLoader) btnLoader.style.display = 'flex';
-    } else {
-        button.disabled = false;
-        if (btnText) btnText.style.display = 'inline';
-        if (btnIcon) btnIcon.style.display = 'inline';
-        if (btnLoader) btnLoader.style.display = 'none';
+        stayBtn.addEventListener('click', () => {
+            successModal.classList.remove('show');
+        });
+
+        goBtn.addEventListener('click', () => {
+            successModal.classList.remove('show');
+            document.querySelectorAll('.island-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('.island-tab[data-section="history"]').classList.add('active');
+            document.getElementById('section-create').classList.remove('active');
+            document.getElementById('section-history').classList.add('active');
+            loadItineraries();
+        });
     }
-}
 
-function showError(message) {
-    const errorEl = document.getElementById('error-message');
-    errorEl.textContent = message;
-    errorEl.classList.add('show');
-    errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
+    function setupSearch() {
+        const searchInput = document.getElementById('search-input');
+        let timeout;
 
-function clearError() {
-    document.getElementById('error-message').classList.remove('show');
-}
+        searchInput.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                filterItineraries(searchInput.value.trim().toLowerCase());
+            }, 300);
+        });
+    }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+    function filterItineraries(query) {
+        const grid = document.getElementById('itinerary-grid');
+        const emptyState = document.getElementById('empty-history');
 
-function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: 'numeric'
-    });
-}
+        if (!query) {
+            renderItineraries(itineraries);
+            return;
+        }
+
+        const filtered = itineraries.filter(it => {
+            const title = (it.title || '').toLowerCase();
+            const destination = (it.destination || '').toLowerCase();
+            return title.includes(query) || destination.includes(query);
+        });
+
+        renderItineraries(filtered);
+
+        if (filtered.length === 0 && itineraries.length > 0) {
+            grid.innerHTML = '';
+            emptyState.style.display = 'block';
+            emptyState.querySelector('p').innerHTML = 'No itineraries match your search.';
+        }
+    }
+
+    async function loadItineraries() {
+        const grid = document.getElementById('itinerary-grid');
+        const emptyState = document.getElementById('empty-history');
+
+        try {
+            const res = await fetch(`${API_BASE}/api/itinerary/list`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+
+            if (!res.ok) throw new Error('Failed to load itineraries');
+
+            itineraries = await res.json();
+
+            if (itineraries.length === 0) {
+                grid.innerHTML = '';
+                emptyState.style.display = 'block';
+                emptyState.querySelector('p').innerHTML = 'No itineraries yet.<br>Create your first one!';
+            } else {
+                emptyState.style.display = 'none';
+                renderItineraries(itineraries);
+            }
+        } catch (err) {
+            console.error(err);
+            grid.innerHTML = '<p style="color: var(--muted); text-align: center;">Failed to load itineraries.</p>';
+        }
+    }
+
+    function renderItineraries(list) {
+        const grid = document.getElementById('itinerary-grid');
+        const emptyState = document.getElementById('empty-history');
+
+        if (list.length === 0) {
+            grid.innerHTML = '';
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        grid.innerHTML = list.map(it => {
+            const date = new Date(it.created_at).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric'
+            });
+            const isNew = it.viewed === false && it.status === 'completed';
+            const status = it.status || 'completed';
+            
+            let statusBadge = '';
+            let cardClass = 'itinerary-card';
+            let deleteBtn = '';
+            
+            if (status === 'generating') {
+                statusBadge = `<span class="status-badge generating">
+                    <svg class="spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"></circle>
+                    </svg>
+                    In Progress${it.progress ? ` (${it.progress}%)` : ''}
+                </span>`;
+                cardClass += ' generating';
+            } else if (status === 'failed') {
+                statusBadge = `<span class="status-badge failed">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    Failed
+                </span>`;
+                cardClass += ' failed';
+                deleteBtn = `<button class="btn-delete-card" data-delete-id="${it.id}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>`;
+            } else {
+                if (isNew) {
+                    cardClass += ' new';
+                }
+                deleteBtn = `<button class="btn-delete-card" data-delete-id="${it.id}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>`;
+            }
+            
+            return `
+                <div class="${cardClass}" data-id="${it.id}" data-status="${status}">
+                    ${deleteBtn}
+                    ${statusBadge}
+                    <h4>${escapeHtml(it.title || 'Generating itinerary...')}</h4>
+                    <p class="destination">${escapeHtml(it.destination || (status === 'generating' ? 'Processing videos...' : 'Unknown destination'))}</p>
+                    <div class="meta">
+                        <span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            ${date}
+                        </span>
+                        <span>${status === 'completed' ? (it.total_days || '?') + ' days' : ''}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        grid.querySelectorAll('.btn-delete-card').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.deleteId;
+                showDeleteModal(id);
+            });
+        });
+
+        grid.querySelectorAll('.itinerary-card').forEach(card => {
+            card.addEventListener('click', async () => {
+                const id = card.dataset.id;
+                const status = card.dataset.status;
+                
+                if (status === 'generating') {
+                    return;
+                }
+                
+                if (status === 'failed') {
+                    alert('This itinerary generation failed. Please try again.');
+                    return;
+                }
+                
+                if (card.classList.contains('new')) {
+                    try {
+                        await fetch(`${API_BASE}/api/itinerary/${id}/viewed`, {
+                            method: 'PATCH',
+                            headers: { 'Authorization': `Bearer ${accessToken}` }
+                        });
+                    } catch (err) {
+                        console.error('Failed to mark as viewed:', err);
+                    }
+                }
+                
+                window.location.href = `/itinerary/${id}`;
+            });
+        });
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    initPageLoader();
+    verifyAndInit();
+})();

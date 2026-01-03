@@ -48,6 +48,7 @@ app.add_middleware(
 app.mount("/css", StaticFiles(directory="page_serving_routers/css"), name="css")
 app.mount("/js", StaticFiles(directory="page_serving_routers/js"), name="js")
 app.mount("/images", StaticFiles(directory="page_serving_routers/images"), name="images")
+app.mount("/fonts", StaticFiles(directory="page_serving_routers/fonts"), name="fonts")
 
 app.include_router(auth_router)
 app.include_router(youtube_router)

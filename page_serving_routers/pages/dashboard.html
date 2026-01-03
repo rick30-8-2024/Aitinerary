@@ -5,194 +5,276 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Aitinerary</title>
     <link rel="stylesheet" href="/css/dashboard.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="loading">
+    <div class="page-loader" id="page-loader">
+        <div class="loader-content">
+            <div class="loader-brand">AITINERARY</div>
+            <div class="loader-spinner">
+                <svg viewBox="0 0 50 50">
+                    <circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="shader-layer" aria-hidden="true">
+        <iframe class="shader-frame" src="/js/shaders/index.html" tabindex="-1" title="Background"></iframe>
+        <div class="shader-tint"></div>
+    </div>
+
     <header class="header">
         <div class="header-content">
             <div class="brand">
-                <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="24" cy="24" r="24" fill="#4F46E5"/>
-                    <path d="M24 12L28 20H36L30 26L32 34L24 29L16 34L18 26L12 20H20L24 12Z" fill="white"/>
+                <span class="brand-mark">AITINERARY</span>
+            </div>
+            
+            <div class="floating-island">
+                <button class="island-tab active" data-section="create">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Create Itinerary</span>
+                </button>
+                <button class="island-tab" data-section="history">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>My Itineraries</span>
+                </button>
+            </div>
+
+            <button class="btn-user-logout" id="logout-btn" aria-label="Sign out">
+                <span class="user-name" id="user-name">Loading...</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
                 </svg>
-                <span>Aitinerary</span>
-            </div>
-            <div class="user-menu">
-                <span class="user-email" id="user-email">Loading...</span>
-                <button class="btn-logout" id="logout-btn">Sign Out</button>
-            </div>
+            </button>
         </div>
     </header>
 
     <main class="main-content">
-        <div class="container">
-            <div class="page-header">
-                <h1>Create Your Itinerary</h1>
-                <p>Transform YouTube travel vlogs into personalized day-by-day itineraries</p>
-            </div>
-
-            <div class="content-grid">
-                <div class="form-section">
+        <section class="section-create active" id="section-create">
+            <div class="create-layout">
+                <div class="form-panel">
                     <form id="generate-form">
-                        <div class="card">
-                            <div class="card-header">
-                                <h2>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
-                                        <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
-                                    </svg>
-                                    YouTube Videos
-                                </h2>
-                                <span class="hint">Add 1-5 travel vlogs to analyze</span>
-                            </div>
-                            <div class="card-body">
-                                <div id="url-inputs">
-                                    <div class="url-input-group">
-                                        <input type="url" class="youtube-url" placeholder="https://youtube.com/watch?v=..." required>
-                                        <span class="url-status"></span>
-                                        <button type="button" class="btn-remove-url" style="display: none;">×</button>
-                                    </div>
+                        <div class="wizard-panel active" data-step="1">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
+                                            <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
+                                        </svg>
+                                        YouTube Videos
+                                    </h2>
+                                    <span class="hint">Add 1-5 travel vlogs to analyze</span>
                                 </div>
-                                <button type="button" class="btn-add-url" id="add-url-btn">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
-                                    Add Another Video
-                                </button>
+                                <div class="card-body">
+                                    <div id="url-inputs">
+                                        <div class="url-input-group">
+                                            <input type="url" class="youtube-url" placeholder="https://youtube.com/watch?v=..." required>
+                                            <span class="url-status"></span>
+                                            <button type="button" class="btn-remove-url" style="display: none;">×</button>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn-add-url" id="add-url-btn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                        Add Another Video
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="card">
-                            <div class="card-header">
-                                <h2>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                                    </svg>
-                                    Trip Preferences
-                                </h2>
-                            </div>
-                            <div class="card-body">
-                                <div class="form-row">
+                        <div class="wizard-panel" data-step="2">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                        </svg>
+                                        Trip Preferences
+                                    </h2>
+                                </div>
+                                <div class="card-body">
                                     <div class="form-group">
-                                        <label for="budget">Budget</label>
-                                        <div class="input-group">
-                                            <input type="number" id="budget" name="budget" min="100" placeholder="5000" required>
-                                            <select id="currency" name="currency">
-                                                <option value="USD">USD</option>
-                                                <option value="EUR">EUR</option>
-                                                <option value="GBP">GBP</option>
-                                                <option value="INR">INR</option>
-                                                <option value="JPY">JPY</option>
-                                                <option value="AUD">AUD</option>
-                                                <option value="CAD">CAD</option>
+                                        <label for="destination-name">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                                <circle cx="12" cy="10" r="3"></circle>
+                                            </svg>
+                                            Where do you want to go? <span class="required">*</span>
+                                        </label>
+                                        <input type="text" id="destination-name" name="destination_name" placeholder="e.g., Paris, Tokyo, Bali..." required data-required="true">
+                                        <span class="hint">Enter your desired destination</span>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="budget">Budget <span class="required">*</span></label>
+                                            <div class="input-group">
+                                                <input type="number" id="budget" name="budget" min="100" placeholder="5000" required data-required="true">
+                                                <select id="currency" name="currency">
+                                                    <option value="USD">USD</option>
+                                                    <option value="EUR">EUR</option>
+                                                    <option value="GBP">GBP</option>
+                                                    <option value="INR">INR</option>
+                                                    <option value="JPY">JPY</option>
+                                                    <option value="AUD">AUD</option>
+                                                    <option value="CAD">CAD</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="trip-duration">Trip Duration (days) <span class="required">*</span></label>
+                                            <input type="number" id="trip-duration" name="trip_duration_days" min="1" max="30" placeholder="7" required data-required="true">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="num-travelers">Number of Travelers <span class="required">*</span></label>
+                                            <input type="number" id="num-travelers" name="num_travelers" min="1" max="50" placeholder="2" required data-required="true">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="activity-style">Activity Style</label>
+                                            <select id="activity-style" name="activity_style">
+                                                <option value="mixed">Mixed</option>
+                                                <option value="relaxing">Relaxing</option>
+                                                <option value="adventure">Adventure</option>
+                                                <option value="cultural">Cultural</option>
+                                                <option value="sporty">Sporty</option>
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="trip-duration">Trip Duration (days)</label>
-                                        <input type="number" id="trip-duration" name="trip_duration_days" min="1" max="30" placeholder="7" required>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="accommodation">Accommodation</label>
+                                            <select id="accommodation" name="accommodation_preference">
+                                                <option value="mid-range">Mid-range</option>
+                                                <option value="budget">Budget</option>
+                                                <option value="luxury">Luxury</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="start-date">Start Date</label>
+                                            <input type="date" id="start-date" name="start_date">
+                                        </div>
                                     </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="trip-type">Trip Type</label>
-                                        <select id="trip-type" name="trip_type" required>
-                                            <option value="">Select...</option>
-                                            <option value="solo">Solo</option>
-                                            <option value="couple">Couple</option>
-                                            <option value="family">Family</option>
-                                            <option value="friends">Friends</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="num-travelers">Number of Travelers</label>
-                                        <input type="number" id="num-travelers" name="num_travelers" min="1" max="50" placeholder="2" required>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="activity-style">Activity Style</label>
-                                        <select id="activity-style" name="activity_style">
-                                            <option value="mixed">Mixed</option>
-                                            <option value="relaxing">Relaxing</option>
-                                            <option value="adventure">Adventure</option>
-                                            <option value="cultural">Cultural</option>
-                                            <option value="sporty">Sporty</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="accommodation">Accommodation</label>
-                                        <select id="accommodation" name="accommodation_preference">
-                                            <option value="mid-range">Mid-range</option>
-                                            <option value="budget">Budget</option>
-                                            <option value="luxury">Luxury</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="start-date">Start Date (Optional)</label>
-                                    <input type="date" id="start-date" name="start_date">
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Dietary Restrictions</label>
-                                    <div class="checkbox-group">
-                                        <label class="checkbox-item">
-                                            <input type="checkbox" name="dietary" value="vegetarian">
-                                            <span>Vegetarian</span>
-                                        </label>
-                                        <label class="checkbox-item">
-                                            <input type="checkbox" name="dietary" value="vegan">
-                                            <span>Vegan</span>
-                                        </label>
-                                        <label class="checkbox-item">
-                                            <input type="checkbox" name="dietary" value="halal">
-                                            <span>Halal</span>
-                                        </label>
-                                        <label class="checkbox-item">
-                                            <input type="checkbox" name="dietary" value="kosher">
-                                            <span>Kosher</span>
-                                        </label>
-                                        <label class="checkbox-item">
-                                            <input type="checkbox" name="dietary" value="gluten-free">
-                                            <span>Gluten-Free</span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="mobility">Mobility Constraints</label>
-                                    <select id="mobility" name="mobility_constraints">
-                                        <option value="">None</option>
-                                        <option value="limited-walking">Limited Walking</option>
-                                        <option value="wheelchair">Wheelchair Accessible</option>
-                                        <option value="elderly-friendly">Elderly Friendly</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="must-visit">Must-Visit Places (Optional)</label>
-                                    <input type="text" id="must-visit" name="must_visit_places" placeholder="Eiffel Tower, Louvre Museum...">
-                                    <span class="hint">Separate places with commas</span>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="additional-notes">Additional Notes (Optional)</label>
-                                    <textarea id="additional-notes" name="additional_notes" rows="3" maxlength="1000" placeholder="Any special requests or preferences..."></textarea>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="error-message" id="error-message"></div>
+                        <div class="wizard-panel" data-step="3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                        Additional Details
+                                    </h2>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label>Dietary Restrictions</label>
+                                        <div class="checkbox-group">
+                                            <label class="checkbox-item">
+                                                <input type="checkbox" name="dietary" value="vegetarian">
+                                                <span>Vegetarian</span>
+                                            </label>
+                                            <label class="checkbox-item">
+                                                <input type="checkbox" name="dietary" value="vegan">
+                                                <span>Vegan</span>
+                                            </label>
+                                            <label class="checkbox-item">
+                                                <input type="checkbox" name="dietary" value="halal">
+                                                <span>Halal</span>
+                                            </label>
+                                            <label class="checkbox-item">
+                                                <input type="checkbox" name="dietary" value="kosher">
+                                                <span>Kosher</span>
+                                            </label>
+                                            <label class="checkbox-item">
+                                                <input type="checkbox" name="dietary" value="gluten-free">
+                                                <span>Gluten-Free</span>
+                                            </label>
+                                        </div>
+                                    </div>
 
-                        <button type="submit" class="btn-generate" id="generate-btn">
+                                    <div class="form-group">
+                                        <label for="mobility">Mobility Constraints</label>
+                                        <select id="mobility" name="mobility_constraints">
+                                            <option value="">None</option>
+                                            <option value="limited-walking">Limited Walking</option>
+                                            <option value="wheelchair">Wheelchair Accessible</option>
+                                            <option value="elderly-friendly">Elderly Friendly</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="must-visit">Must-Visit Places (Optional)</label>
+                                        <input type="text" id="must-visit" name="must_visit_places" placeholder="Eiffel Tower, Louvre Museum...">
+                                        <span class="hint">Separate places with commas</span>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="additional-notes">Additional Notes (Optional)</label>
+                                        <textarea id="additional-notes" name="additional_notes" rows="2" maxlength="1000" placeholder="Any special requests or preferences..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="info-panel">
+                    <div class="page-header">
+                        <h1>Create your itinerary</h1>
+                        <p>Paste YouTube travel vlogs and generate a day-by-day plan.</p>
+                    </div>
+
+                    <div class="wizard-steps">
+                        <div class="wizard-step active" data-step="1">
+                            <span class="step-number">1</span>
+                            <span class="step-label">Videos</span>
+                        </div>
+                        <div class="wizard-step" data-step="2">
+                            <span class="step-number">2</span>
+                            <span class="step-label">Preferences</span>
+                        </div>
+                        <div class="wizard-step" data-step="3">
+                            <span class="step-number">3</span>
+                            <span class="step-label">Details</span>
+                        </div>
+                    </div>
+
+                    <div class="error-message" id="error-message"></div>
+
+                    <div class="wizard-nav">
+                        <button type="button" class="btn-prev" id="btn-prev" data-prev="1" style="visibility: hidden;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                            Back
+                        </button>
+                        <button type="button" class="btn-next" id="btn-next" data-next="2">
+                            Next
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                        <button type="button" class="btn-generate" id="generate-btn" style="display: none;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                             </svg>
@@ -204,36 +286,43 @@
                                 <span id="generate-status">Starting...</span>
                             </span>
                         </button>
-                    </form>
-                </div>
-
-                <div class="sidebar">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                    <polyline points="10 9 9 9 8 9"></polyline>
-                                </svg>
-                                Your Itineraries
-                            </h2>
-                        </div>
-                        <div class="card-body">
-                            <div id="itinerary-list" class="itinerary-list">
-                                <div class="loading-skeleton">
-                                    <div class="skeleton-item"></div>
-                                    <div class="skeleton-item"></div>
-                                    <div class="skeleton-item"></div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
+
+        <section class="section-history" id="section-history">
+            <div class="history-container">
+                <div class="page-header">
+                    <h1>My Itineraries</h1>
+                    <p>View and manage your generated travel plans.</p>
+                </div>
+
+                <div class="search-bar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="search-input" placeholder="Search itineraries...">
+                </div>
+
+                <div id="itinerary-grid" class="itinerary-grid">
+                    <div class="loading-skeleton">
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                    </div>
+                </div>
+
+                <div class="empty-state" id="empty-history" style="display: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <p>No itineraries yet.<br>Create your first one!</p>
+                </div>
+            </div>
+        </section>
     </main>
 
     <div class="modal" id="progress-modal">
@@ -249,22 +338,75 @@
                     <div class="progress-text" id="progress-text">Starting...</div>
                 </div>
                 <div class="progress-steps">
-                    <div class="progress-step" id="step-1">
+                    <div class="progress-step" id="prog-step-1">
                         <span class="step-icon">📹</span>
                         <span class="step-text">Extracting video transcripts</span>
                     </div>
-                    <div class="progress-step" id="step-2">
+                    <div class="progress-step" id="prog-step-2">
                         <span class="step-icon">🔍</span>
                         <span class="step-text">Analyzing content</span>
                     </div>
-                    <div class="progress-step" id="step-3">
+                    <div class="progress-step" id="prog-step-3">
                         <span class="step-icon">✨</span>
                         <span class="step-text">Generating itinerary</span>
                     </div>
-                    <div class="progress-step" id="step-4">
+                    <div class="progress-step" id="prog-step-4">
                         <span class="step-icon">✅</span>
                         <span class="step-text">Finalizing</span>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="logout-modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>Sign Out</h3>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to sign out?</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="cancel-logout">Cancel</button>
+                    <button type="button" class="btn-confirm" id="confirm-logout">Sign Out</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="success-modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>🚀 Generation Started!</h3>
+            </div>
+            <div class="modal-body">
+                <p>Your itinerary generation is in progress and will take some time. Once generated, you'll find it in the "My Itineraries" section.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="stay-create">Create Another</button>
+                    <button type="button" class="btn-confirm" id="go-history">View Itineraries</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="delete-modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>🗑️ Delete Itinerary</h3>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this itinerary? This action is <strong>irreversible</strong> and the data cannot be recovered.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="cancel-delete">Cancel</button>
+                    <button type="button" class="btn-confirm btn-danger" id="confirm-delete">
+                        <span class="btn-text">Delete</span>
+                        <span class="btn-loader" style="display: none;">
+                            <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+                            </svg>
+                            <span>Deleting...</span>
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>
