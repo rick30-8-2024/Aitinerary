@@ -7,6 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import settings
 from config.database import database
+from api.routers.auth import router as auth_router
+from api.routers.youtube import router as youtube_router
+from services.auth_service import create_email_index
+from services.gemini_service import gemini_service
 
 
 @asynccontextmanager
@@ -14,7 +18,11 @@ async def lifespan(app: FastAPI):
     """Handle startup and shutdown events."""
     await database.connect()
     print(f"Connected to MongoDB: {settings.DATABASE_NAME}")
+    await create_email_index()
+    print("Database indexes created")
     yield
+    gemini_service.close()
+    print("Gemini service closed")
     await database.disconnect()
     print("Disconnected from MongoDB")
 
@@ -37,6 +45,9 @@ app.add_middleware(
 app.mount("/css", StaticFiles(directory="page_serving_routers/css"), name="css")
 app.mount("/js", StaticFiles(directory="page_serving_routers/js"), name="js")
 app.mount("/images", StaticFiles(directory="page_serving_routers/images"), name="images")
+
+app.include_router(auth_router)
+app.include_router(youtube_router)
 
 
 @app.get("/")

@@ -37,6 +37,10 @@ class Database:
     def get_database(self) -> AsyncIOMotorDatabase:
         """Get database instance."""
         return self.db
+    
+    def get_collection(self, collection_name: str):
+        """Get a specific collection from the database."""
+        return self.db[collection_name]
 
 
 database = Database()
