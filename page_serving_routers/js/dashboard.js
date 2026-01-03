@@ -468,7 +468,6 @@
 
     function setupFormSubmission() {
         const generateBtn = document.getElementById('generate-btn');
-        const progressModal = document.getElementById('progress-modal');
         const successModal = document.getElementById('success-modal');
 
         generateBtn.addEventListener('click', async () => {
@@ -510,31 +509,7 @@
             generateBtn.querySelector('.btn-text').style.display = 'none';
             generateBtn.querySelector('.btn-loader').style.display = 'flex';
 
-            progressModal.classList.add('show');
-            updateProgress(0, 'Starting generation...');
-
             try {
-                const steps = [
-                    { pct: 25, text: 'Extracting video transcripts...', step: 1 },
-                    { pct: 50, text: 'Analyzing content...', step: 2 },
-                    { pct: 75, text: 'Generating itinerary...', step: 3 },
-                    { pct: 90, text: 'Finalizing...', step: 4 }
-                ];
-
-                let stepIndex = 0;
-                const progressInterval = setInterval(() => {
-                    if (stepIndex < steps.length) {
-                        const s = steps[stepIndex];
-                        updateProgress(s.pct, s.text);
-                        document.getElementById(`prog-step-${s.step}`).classList.add('active');
-                        if (s.step > 1) {
-                            document.getElementById(`prog-step-${s.step - 1}`).classList.remove('active');
-                            document.getElementById(`prog-step-${s.step - 1}`).classList.add('completed');
-                        }
-                        stepIndex++;
-                    }
-                }, 2000);
-
                 const res = await fetch(`${API_BASE}/api/itinerary/generate`, {
                     method: 'POST',
                     headers: {
@@ -544,27 +519,15 @@
                     body: JSON.stringify(payload)
                 });
 
-                clearInterval(progressInterval);
-
                 if (!res.ok) {
                     const err = await res.json();
                     throw new Error(err.detail || 'Failed to generate itinerary');
                 }
 
-                updateProgress(100, 'Complete!');
-                document.querySelectorAll('.progress-step').forEach(s => {
-                    s.classList.remove('active');
-                    s.classList.add('completed');
-                });
-
-                setTimeout(() => {
-                    progressModal.classList.remove('show');
-                    successModal.classList.add('show');
-                    resetForm();
-                }, 1000);
+                successModal.classList.add('show');
+                resetForm();
 
             } catch (err) {
-                progressModal.classList.remove('show');
                 const errorEl = document.getElementById('error-message');
                 errorEl.textContent = err.message;
                 errorEl.classList.add('show');
@@ -574,13 +537,6 @@
                 generateBtn.querySelector('.btn-loader').style.display = 'none';
             }
         });
-    }
-
-    function updateProgress(pct, text) {
-        document.getElementById('progress-fill').style.width = `${pct}%`;
-        document.getElementById('progress-text').textContent = text;
-        const statusEl = document.getElementById('generate-status');
-        if (statusEl) statusEl.textContent = text;
     }
 
     function resetForm() {

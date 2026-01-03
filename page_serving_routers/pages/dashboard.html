@@ -325,40 +325,6 @@
         </section>
     </main>
 
-    <div class="modal" id="progress-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Generating Your Itinerary</h3>
-            </div>
-            <div class="modal-body">
-                <div class="progress-container">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
-                    </div>
-                    <div class="progress-text" id="progress-text">Starting...</div>
-                </div>
-                <div class="progress-steps">
-                    <div class="progress-step" id="prog-step-1">
-                        <span class="step-icon">📹</span>
-                        <span class="step-text">Extracting video transcripts</span>
-                    </div>
-                    <div class="progress-step" id="prog-step-2">
-                        <span class="step-icon">🔍</span>
-                        <span class="step-text">Analyzing content</span>
-                    </div>
-                    <div class="progress-step" id="prog-step-3">
-                        <span class="step-icon">✨</span>
-                        <span class="step-text">Generating itinerary</span>
-                    </div>
-                    <div class="progress-step" id="prog-step-4">
-                        <span class="step-icon">✅</span>
-                        <span class="step-text">Finalizing</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="modal" id="logout-modal">
         <div class="modal-content modal-small">
             <div class="modal-header">
@@ -377,7 +343,13 @@
     <div class="modal" id="success-modal">
         <div class="modal-content modal-small">
             <div class="modal-header">
-                <h3>🚀 Generation Started!</h3>
+                <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    Generation Started
+                </h3>
             </div>
             <div class="modal-body">
                 <p>Your itinerary generation is in progress and will take some time. Once generated, you'll find it in the "My Itineraries" section.</p>
@@ -392,7 +364,13 @@
     <div class="modal" id="delete-modal">
         <div class="modal-content modal-small">
             <div class="modal-header">
-                <h3>🗑️ Delete Itinerary</h3>
+                <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Delete Itinerary
+                </h3>
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete this itinerary? This action is <strong>irreversible</strong> and the data cannot be recovered.</p>

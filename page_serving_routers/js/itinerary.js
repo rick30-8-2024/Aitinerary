@@ -1,7 +1,35 @@
 let itineraryData = null;
 let isSharedView = false;
 
+function toTitleCase(str) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function formatTitleWithDate(title) {
+    if (!itineraryData || !itineraryData.days || itineraryData.days.length === 0) {
+        return toTitleCase(title);
+    }
+    
+    const firstDay = itineraryData.days[0];
+    if (firstDay.date) {
+        const date = new Date(firstDay.date);
+        const day = date.getDate();
+        const month = date.toLocaleString('en-US', { month: 'long' });
+        const year = date.getFullYear();
+        
+        const titleWithoutDate = title.replace(/\s*-\s*\w+\s+\d{4}$/, '').trim();
+        return `${toTitleCase(titleWithoutDate)} - ${day} ${month} ${year}`;
+    }
+    
+    return toTitleCase(title);
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
+    setTimeout(() => {
+        document.body.classList.remove('loading');
+    }, 300);
+
     const pathParts = window.location.pathname.split('/');
     isSharedView = pathParts[1] === 'shared';
     const idOrCode = pathParts[2];
@@ -19,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadItinerary(idOrCode);
     initExport();
     initShare();
+    initStickyNavigation();
 });
 
 async function checkAuth() {
@@ -78,10 +107,10 @@ async function loadItinerary(idOrCode) {
 }
 
 function renderItinerary() {
-    document.getElementById('itinerary-title').textContent = itineraryData.title;
-    document.getElementById('itinerary-destination').querySelector('span').textContent = 
-        itineraryData.destination + (itineraryData.country ? `, ${itineraryData.country}` : '');
-    document.getElementById('itinerary-duration').querySelector('span').textContent = 
+    document.getElementById('itinerary-title').textContent = formatTitleWithDate(itineraryData.title);
+    document.getElementById('itinerary-destination').querySelector('span').textContent =
+        toTitleCase(itineraryData.destination) + (itineraryData.country ? `, ${toTitleCase(itineraryData.country)}` : '');
+    document.getElementById('itinerary-duration').querySelector('span').textContent =
         `${itineraryData.days.length} Days`;
     document.getElementById('itinerary-summary').textContent = itineraryData.summary;
 
@@ -91,8 +120,6 @@ function renderItinerary() {
     renderTips();
     renderPacking();
     renderPhrases();
-    renderEmergency();
-    renderWeather();
 
     if (isSharedView) {
         document.getElementById('share-btn').style.display = 'none';
@@ -126,7 +153,7 @@ function renderActivities(activities) {
                 <span class="duration">${escapeHtml(act.estimated_duration)}</span>
             </div>
             <div class="activity-content">
-                <h4>${escapeHtml(act.place_name)}</h4>
+                <h4>${escapeHtml(toTitleCase(act.place_name))}</h4>
                 <p>${escapeHtml(act.description)}</p>
                 <div class="activity-meta">
                     <span class="activity-cost">💰 ${formatCurrency(act.estimated_cost)}</span>
@@ -166,7 +193,7 @@ function renderMeals(meals) {
                 <div class="meal-item">
                     <div class="meal-icon">${mealIcons[meal.meal_type] || '🍴'}</div>
                     <div class="meal-content">
-                        <h4>${escapeHtml(meal.place_name)}</h4>
+                        <h4>${escapeHtml(toTitleCase(meal.place_name))}</h4>
                         <p>${meal.cuisine ? escapeHtml(meal.cuisine) : ''} ${meal.dietary_notes ? `• ${escapeHtml(meal.dietary_notes)}` : ''}</p>
                         <div class="meal-meta">
                             <span>💰 ${formatCurrency(meal.estimated_cost)}/person</span>
@@ -255,28 +282,6 @@ function renderPhrases() {
     }
     
     phrasesEl.innerHTML = phrases.map(phrase => `<li>${escapeHtml(phrase)}</li>`).join('');
-}
-
-function renderEmergency() {
-    const emergencyEl = document.getElementById('emergency-contacts');
-    const contacts = itineraryData.emergency_contacts || [];
-    
-    if (contacts.length === 0) {
-        emergencyEl.innerHTML = '<li>No emergency contacts available</li>';
-        return;
-    }
-    
-    emergencyEl.innerHTML = contacts.map(contact => `<li>${escapeHtml(contact)}</li>`).join('');
-}
-
-function renderWeather() {
-    const weatherCard = document.getElementById('weather-card');
-    const weatherInfo = document.getElementById('weather-info');
-    
-    if (itineraryData.weather_info) {
-        weatherCard.style.display = 'block';
-        weatherInfo.textContent = itineraryData.weather_info;
-    }
 }
 
 function initExport() {
@@ -416,4 +421,60 @@ function showError(message) {
     document.getElementById('loading-state').style.display = 'none';
     document.getElementById('error-state').style.display = 'flex';
     document.getElementById('error-message').textContent = message;
+}
+
+function initStickyNavigation() {
+    const navCard = document.querySelector('.nav-card');
+    const budgetCard = document.querySelector('.budget-card');
+    const sidebar = document.querySelector('.sidebar');
+    const header = document.querySelector('.header');
+    
+    if (!navCard || !budgetCard || !sidebar || !header) return;
+    
+    let placeholder = null;
+    let isSticky = false;
+    
+    function handleScroll() {
+        const budgetRect = budgetCard.getBoundingClientRect();
+        const headerHeight = header.offsetHeight;
+        const stickyTrigger = budgetRect.bottom;
+        const sidebarRect = sidebar.getBoundingClientRect();
+        
+        if (stickyTrigger <= headerHeight && !isSticky) {
+            isSticky = true;
+            
+            placeholder = document.createElement('div');
+            placeholder.style.height = navCard.offsetHeight + 'px';
+            placeholder.style.visibility = 'hidden';
+            navCard.parentNode.insertBefore(placeholder, navCard.nextSibling);
+            
+            navCard.classList.add('is-sticky');
+            navCard.style.right = (window.innerWidth - sidebarRect.right) + 'px';
+        } else if (stickyTrigger > headerHeight && isSticky) {
+            isSticky = false;
+            navCard.classList.remove('is-sticky');
+            navCard.style.right = '';
+            
+            if (placeholder && placeholder.parentNode) {
+                placeholder.parentNode.removeChild(placeholder);
+                placeholder = null;
+            }
+        }
+        
+        if (isSticky) {
+            navCard.style.right = (window.innerWidth - sidebarRect.right) + 'px';
+        }
+    }
+    
+    function handleResize() {
+        if (isSticky) {
+            const sidebarRect = sidebar.getBoundingClientRect();
+            navCard.style.right = (window.innerWidth - sidebarRect.right) + 'px';
+        }
+    }
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
+    
+    handleScroll();
 }

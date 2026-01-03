@@ -2,10 +2,13 @@
 Gemini AI Integration Service
 
 Provides functionality to analyze YouTube transcripts and generate travel itineraries
-using Google's Gemini 2.5 Flash model with Google Search grounding.
+using Google's Gemini 2.5 Flash model with a dual-agent architecture:
+- Internet Search Agent: Has Google Search grounding for real-time information
+- Tool Call Agent: Generates structured JSON responses and can call the search agent
 """
 
 import json
+import re
 from typing import Optional
 
 from google import genai
@@ -40,10 +43,28 @@ class GenerationError(GeminiServiceError):
     pass
 
 
+SEARCH_INTERNET_TOOL = types.FunctionDeclaration(
+    name="search_internet",
+    description="Search the internet for real-time information about places, prices, opening hours, reviews, or any current travel information. Use this when you need up-to-date information that might not be in your training data.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The search query to find information about. Be specific and include location names."
+            },
+            "context": {
+                "type": "string",
+                "description": "Additional context about what kind of information you're looking for (e.g., 'prices', 'opening hours', 'reviews', 'nearby attractions')"
+            }
+        },
+        "required": ["query"]
+    }
+)
 
 
 class GeminiService:
-    """Service for AI-powered transcript analysis and itinerary generation."""
+    """Service for AI-powered transcript analysis and itinerary generation using dual-agent architecture."""
     
     MODEL_NAME = "gemini-2.5-flash"
     
@@ -68,6 +89,135 @@ class GeminiService:
     def aio(self):
         """Get async client interface."""
         return self._get_client().aio
+    
+    async def _internet_search_agent(self, query: str, context: Optional[str] = None) -> str:
+        """
+        Internet Search Agent - Uses Google Search grounding for real-time information.
+        
+        This agent can access the internet but cannot return structured JSON.
+        It returns plain text search results.
+        
+        Args:
+            query: The search query
+            context: Additional context for the search
+            
+        Returns:
+            Search results as plain text
+        """
+        client = self._get_client()
+        
+        search_prompt = f"""Search the internet and provide detailed, accurate information for: {query}
+        
+{"Context: " + context if context else ""}
+
+Provide:
+1. Current and accurate information
+2. Specific details like prices, addresses, opening hours if relevant
+3. Recent reviews or ratings if available
+4. Any warnings or important notes
+
+Be concise but thorough. Format the response as clear, readable text."""
+        
+        try:
+            response = await client.aio.models.generate_content(
+                model=self.MODEL_NAME,
+                contents=search_prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.3,
+                    top_p=0.95,
+                    tools=[types.Tool(google_search=types.GoogleSearch())]
+                )
+            )
+            
+            return response.text or "No search results found."
+            
+        except Exception as e:
+            return f"Search failed: {str(e)}"
+    
+    async def _tool_call_agent(
+        self,
+        prompt: str,
+        max_tool_calls: int = 10
+    ) -> str:
+        """
+        Tool Call Agent - Generates structured JSON responses with ability to search internet.
+        
+        This agent uses JSON response mode and can call the internet search agent
+        through function calling when it needs real-time information.
+        
+        Args:
+            prompt: The generation prompt
+            max_tool_calls: Maximum number of search calls allowed
+            
+        Returns:
+            JSON string response
+        """
+        client = self._get_client()
+        
+        messages = [
+            types.Content(
+                role="user",
+                parts=[types.Part(text=prompt)]
+            )
+        ]
+        
+        tool_calls_made = 0
+        
+        while tool_calls_made < max_tool_calls:
+            response = await client.aio.models.generate_content(
+                model=self.MODEL_NAME,
+                contents=messages,
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    top_p=0.95,
+                    tools=[types.Tool(function_declarations=[SEARCH_INTERNET_TOOL])]
+                )
+            )
+            
+            if not response.candidates or not response.candidates[0].content.parts:
+                raise GenerationError("Empty response from Gemini API")
+            
+            response_parts = response.candidates[0].content.parts
+            
+            function_calls = [
+                part.function_call for part in response_parts 
+                if hasattr(part, 'function_call') and part.function_call
+            ]
+            
+            if not function_calls:
+                text_parts = [part.text for part in response_parts if hasattr(part, 'text') and part.text]
+                if text_parts:
+                    return "".join(text_parts)
+                raise GenerationError("No text or function calls in response")
+            
+            messages.append(types.Content(
+                role="model",
+                parts=response_parts
+            ))
+            
+            function_responses = []
+            for fc in function_calls:
+                if fc.name == "search_internet":
+                    args = dict(fc.args) if fc.args else {}
+                    query = args.get("query", "")
+                    context = args.get("context")
+                    
+                    search_result = await self._internet_search_agent(query, context)
+                    tool_calls_made += 1
+                    
+                    function_responses.append(
+                        types.Part(function_response=types.FunctionResponse(
+                            name="search_internet",
+                            response={"result": search_result}
+                        ))
+                    )
+            
+            messages.append(types.Content(
+                role="user",
+                parts=function_responses
+            ))
+        
+        raise GenerationError(f"Exceeded maximum tool calls ({max_tool_calls})")
     
     def _build_transcript_analysis_prompt(
         self, 
@@ -137,51 +287,83 @@ MUST VISIT PLACES (User Requested):
 ADDITIONAL NOTES:
 {preferences.additional_notes or 'None'}
 
+IMPORTANT: You have access to the search_internet tool to look up current information about:
+- Opening hours and prices for attractions
+- Restaurant reviews and current prices
+- Hotel availability and rates
+- Recent travel advisories or warnings
+- Local transportation options and costs
+
+Use the search_internet tool to verify and update information when needed, especially for:
+- Prices and costs (search for current rates)
+- Opening hours (may have changed)
+- Popular restaurants (check recent reviews)
+- Safety information (recent advisories)
+
 TASK:
-Generate a comprehensive day-by-day itinerary with:
+Generate a comprehensive day-by-day itinerary. You MUST respond with a valid JSON object with this exact structure:
 
-1. **title**: A catchy title for this itinerary
-2. **destination**: Main destination
-3. **country**: Country name
-4. **summary**: 2-3 sentence overview of the trip
-5. **days**: Array of day plans, each containing:
-   - day_number: Day number (1, 2, 3...)
-   - date: Calculate from start_date if provided
-   - theme: A theme for the day (e.g., "Cultural Exploration", "Beach Day")
-   - summary: Brief summary of the day
-   - activities: Array of activities with:
-     - time_slot: "HH:MM - HH:MM" format
-     - place_name: Name of place
-     - description: What to do there
-     - estimated_cost: Cost in {preferences.currency}
-     - estimated_duration: How long to spend
-     - travel_time_from_previous: Time to get there from previous activity
-     - transport_mode: walk, taxi, metro, bus, etc.
-     - tips: Helpful tips for this place
-     - warnings: Any scam alerts or things to watch out for
-     - booking_required: true/false
-     - weather_alternative: Indoor alternative if weather is bad
-   - meals: Array of meal recommendations with:
-     - meal_type: breakfast, lunch, dinner
-     - place_name: Restaurant name
-     - cuisine: Type of food
-     - estimated_cost: Cost per person
-     - dietary_notes: Any dietary info
-     - recommendation_reason: Why recommended
-   - total_estimated_cost: Sum of day's costs
-   - notes: Any special notes for the day
-
-6. **total_budget_estimate**: Total trip cost estimate
-7. **budget_breakdown**: Breakdown by category (accommodation, food, activities, transportation, shopping, miscellaneous)
-8. **general_tips**: General travel tips for this destination
-9. **packing_suggestions**: What to pack
-10. **emergency_contacts**: Local emergency numbers
-11. **language_phrases**: 5-10 useful local phrases
-12. **best_time_to_visit**: Best season/months
-13. **weather_info**: Expected weather during visit
+{{
+    "title": "A catchy title for this itinerary",
+    "destination": "Main destination",
+    "country": "Country name",
+    "summary": "2-3 sentence overview of the trip",
+    "days": [
+        {{
+            "day_number": 1,
+            "date": "YYYY-MM-DD or null",
+            "theme": "Theme for the day",
+            "summary": "Brief summary of the day",
+            "activities": [
+                {{
+                    "time_slot": "HH:MM - HH:MM",
+                    "place_name": "Name of place",
+                    "description": "What to do there",
+                    "estimated_cost": 0,
+                    "estimated_duration": "Duration string",
+                    "travel_time_from_previous": "Time from previous or null",
+                    "transport_mode": "walk/taxi/metro/bus or null",
+                    "tips": ["tip1", "tip2"],
+                    "warnings": ["warning1"],
+                    "booking_required": false,
+                    "weather_alternative": "Alternative activity or null"
+                }}
+            ],
+            "meals": [
+                {{
+                    "meal_type": "breakfast/lunch/dinner",
+                    "place_name": "Restaurant name",
+                    "cuisine": "Type of food",
+                    "estimated_cost": 0,
+                    "dietary_notes": "Dietary info or null",
+                    "recommendation_reason": "Why recommended"
+                }}
+            ],
+            "total_estimated_cost": 0,
+            "walking_distance": "Distance or null",
+            "notes": "Additional notes or null"
+        }}
+    ],
+    "total_budget_estimate": 0,
+    "budget_breakdown": {{
+        "accommodation": 0,
+        "food": 0,
+        "activities": 0,
+        "transportation": 0,
+        "shopping": 0,
+        "miscellaneous": 0,
+        "total": 0
+    }},
+    "general_tips": ["tip1", "tip2"],
+    "packing_suggestions": ["item1", "item2"],
+    "emergency_contacts": ["contact1"],
+    "language_phrases": ["phrase1"],
+    "best_time_to_visit": "Best season/months or null",
+    "weather_info": "Expected weather or null"
+}}
 
 IMPORTANT GUIDELINES:
-- Use Google Search to verify current prices, opening hours, and availability
+- Use the search_internet tool to verify current prices, opening hours, and availability
 - Include realistic travel times between locations
 - Look for recent reviews mentioning scams or issues
 - Balance the budget across days
@@ -189,7 +371,8 @@ IMPORTANT GUIDELINES:
 - Consider the group type ({preferences.trip_type}) when selecting activities
 - Account for dietary restrictions in meal recommendations
 - Suggest alternatives for any activities with mobility concerns
-- Make the itinerary practical and achievable"""
+- Make the itinerary practical and achievable
+- RESPOND ONLY WITH THE JSON OBJECT, no additional text"""
     
     async def analyze_transcript(
         self,
@@ -284,6 +467,21 @@ IMPORTANT GUIDELINES:
             combined_author
         )
     
+    def _extract_json_from_response(self, text: str) -> dict:
+        """
+        Extract JSON from a response that may contain additional text.
+        
+        Args:
+            text: Response text that may contain JSON
+            
+        Returns:
+            Parsed JSON dictionary
+        """
+        json_match = re.search(r'\{[\s\S]*\}', text)
+        if json_match:
+            return json.loads(json_match.group())
+        raise json.JSONDecodeError("No JSON object found in response", text, 0)
+    
     async def generate_itinerary(
         self,
         analysis: TranscriptAnalysis,
@@ -291,7 +489,10 @@ IMPORTANT GUIDELINES:
         video_titles: list[str]
     ) -> Itinerary:
         """
-        Generate a complete itinerary using Google Search grounding.
+        Generate a complete itinerary using the dual-agent architecture.
+        
+        The Tool Call Agent generates the itinerary and can call the Internet Search Agent
+        when it needs real-time information about prices, hours, etc.
         
         Args:
             analysis: Transcript analysis results
@@ -301,29 +502,17 @@ IMPORTANT GUIDELINES:
         Returns:
             Complete Itinerary object
         """
-        client = self._get_client()
-        
         prompt = self._build_itinerary_generation_prompt(
             analysis, preferences, video_titles
         )
         
         try:
-            response = await client.aio.models.generate_content(
-                model=self.MODEL_NAME,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=Itinerary,
-                    temperature=0.7,
-                    top_p=0.95,
-                    tools=[{"type": "google_search"}]
-                )
-            )
+            response_text = await self._tool_call_agent(prompt, max_tool_calls=15)
             
-            if not response.text:
+            if not response_text:
                 raise GenerationError("Empty response from Gemini API")
             
-            data = json.loads(response.text)
+            data = self._extract_json_from_response(response_text)
             
             days = []
             for day_data in data.get("days", []):
@@ -409,7 +598,7 @@ IMPORTANT GUIDELINES:
         feedback: str
     ) -> Itinerary:
         """
-        Refine an existing itinerary based on user feedback.
+        Refine an existing itinerary based on user feedback using the dual-agent architecture.
         
         Args:
             itinerary: Existing itinerary to refine
@@ -418,8 +607,6 @@ IMPORTANT GUIDELINES:
         Returns:
             Refined Itinerary
         """
-        client = self._get_client()
-        
         prompt = f"""Refine this travel itinerary based on user feedback.
 
 CURRENT ITINERARY:
@@ -428,6 +615,9 @@ CURRENT ITINERARY:
 USER FEEDBACK:
 {feedback}
 
+IMPORTANT: You have access to the search_internet tool to look up current information if needed.
+Use it to verify any changes in prices, hours, or availability.
+
 TASK:
 Modify the itinerary to address the user's feedback while maintaining:
 - The overall structure and format
@@ -435,26 +625,64 @@ Modify the itinerary to address the user's feedback while maintaining:
 - Budget considerations
 - The same destination and duration
 
-Return the complete refined itinerary in the same format."""
+Return the complete refined itinerary as a valid JSON object with the same structure as the input.
+RESPOND ONLY WITH THE JSON OBJECT, no additional text."""
         
         try:
-            response = await client.aio.models.generate_content(
-                model=self.MODEL_NAME,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=Itinerary,
-                    temperature=0.5,
-                    top_p=0.95,
-                    tools=[{"type": "google_search"}]
-                )
-            )
+            response_text = await self._tool_call_agent(prompt, max_tool_calls=10)
             
-            if not response.text:
+            if not response_text:
                 raise GenerationError("Empty response from Gemini API")
             
-            data = json.loads(response.text)
-            return Itinerary(**data)
+            data = self._extract_json_from_response(response_text)
+            
+            days = []
+            for day_data in data.get("days", []):
+                activities = [
+                    Activity(**act) for act in day_data.get("activities", [])
+                ]
+                meals = [
+                    MealRecommendation(**meal) for meal in day_data.get("meals", [])
+                ]
+                days.append(DayPlan(
+                    day_number=day_data.get("day_number", 1),
+                    date=day_data.get("date"),
+                    theme=day_data.get("theme", "Exploration Day"),
+                    summary=day_data.get("summary", ""),
+                    activities=activities,
+                    meals=meals,
+                    total_estimated_cost=day_data.get("total_estimated_cost", 0),
+                    walking_distance=day_data.get("walking_distance"),
+                    notes=day_data.get("notes")
+                ))
+            
+            budget_data = data.get("budget_breakdown", {})
+            budget_breakdown = BudgetBreakdown(
+                accommodation=budget_data.get("accommodation", 0),
+                food=budget_data.get("food", 0),
+                activities=budget_data.get("activities", 0),
+                transportation=budget_data.get("transportation", 0),
+                shopping=budget_data.get("shopping", 0),
+                miscellaneous=budget_data.get("miscellaneous", 0),
+                total=budget_data.get("total", data.get("total_budget_estimate", 0))
+            )
+            
+            return Itinerary(
+                title=data.get("title", itinerary.title),
+                destination=data.get("destination", itinerary.destination),
+                country=data.get("country", itinerary.country),
+                summary=data.get("summary", itinerary.summary),
+                days=days,
+                total_budget_estimate=data.get("total_budget_estimate", itinerary.total_budget_estimate),
+                currency=data.get("currency", itinerary.currency),
+                budget_breakdown=budget_breakdown,
+                general_tips=data.get("general_tips", itinerary.general_tips),
+                packing_suggestions=data.get("packing_suggestions", itinerary.packing_suggestions),
+                emergency_contacts=data.get("emergency_contacts", itinerary.emergency_contacts),
+                language_phrases=data.get("language_phrases", itinerary.language_phrases),
+                best_time_to_visit=data.get("best_time_to_visit", itinerary.best_time_to_visit),
+                weather_info=data.get("weather_info", itinerary.weather_info)
+            )
             
         except Exception as e:
             raise GenerationError(f"Itinerary refinement failed: {str(e)}")
