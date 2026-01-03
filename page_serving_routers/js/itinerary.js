@@ -1,0 +1,419 @@
+let itineraryData = null;
+let isSharedView = false;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    const pathParts = window.location.pathname.split('/');
+    isSharedView = pathParts[1] === 'shared';
+    const idOrCode = pathParts[2];
+
+    if (!idOrCode) {
+        showError('Invalid itinerary URL');
+        return;
+    }
+
+    if (!isSharedView) {
+        const isAuthenticated = await checkAuth();
+        if (!isAuthenticated) return;
+    }
+
+    await loadItinerary(idOrCode);
+    initExport();
+    initShare();
+});
+
+async function checkAuth() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.href = '/login';
+        return false;
+    }
+
+    try {
+        const response = await fetch('/api/auth/verify', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+            localStorage.removeItem('access_token');
+            window.location.href = '/login';
+            return false;
+        }
+        return true;
+    } catch (error) {
+        window.location.href = '/login';
+        return false;
+    }
+}
+
+async function loadItinerary(idOrCode) {
+    const loadingEl = document.getElementById('loading-state');
+    const errorEl = document.getElementById('error-state');
+    const contentEl = document.getElementById('itinerary-content');
+
+    try {
+        const endpoint = isSharedView 
+            ? `/api/itinerary/shared/${idOrCode}`
+            : `/api/itinerary/${idOrCode}`;
+        
+        const headers = isSharedView ? {} : { 
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}` 
+        };
+
+        const response = await fetch(endpoint, { headers });
+
+        if (!response.ok) {
+            throw new Error(response.status === 404 ? 'Itinerary not found' : 'Failed to load');
+        }
+
+        itineraryData = await response.json();
+        
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+        
+        renderItinerary();
+    } catch (error) {
+        loadingEl.style.display = 'none';
+        errorEl.style.display = 'flex';
+        document.getElementById('error-message').textContent = error.message;
+    }
+}
+
+function renderItinerary() {
+    document.getElementById('itinerary-title').textContent = itineraryData.title;
+    document.getElementById('itinerary-destination').querySelector('span').textContent = 
+        itineraryData.destination + (itineraryData.country ? `, ${itineraryData.country}` : '');
+    document.getElementById('itinerary-duration').querySelector('span').textContent = 
+        `${itineraryData.days.length} Days`;
+    document.getElementById('itinerary-summary').textContent = itineraryData.summary;
+
+    renderDays();
+    renderBudget();
+    renderNavigation();
+    renderTips();
+    renderPacking();
+    renderPhrases();
+    renderEmergency();
+    renderWeather();
+
+    if (isSharedView) {
+        document.getElementById('share-btn').style.display = 'none';
+    }
+}
+
+function renderDays() {
+    const container = document.getElementById('days-container');
+    container.innerHTML = itineraryData.days.map(day => `
+        <div class="day-card" id="day-${day.day_number}">
+            <div class="day-header">
+                <h2><span>Day ${day.day_number}</span> — ${escapeHtml(day.theme)}</h2>
+                <span class="day-cost">${formatCurrency(day.total_estimated_cost)}</span>
+            </div>
+            ${day.summary ? `<div class="day-summary">${escapeHtml(day.summary)}</div>` : ''}
+            <div class="day-content">
+                ${renderActivities(day.activities)}
+                ${day.meals && day.meals.length > 0 ? renderMeals(day.meals) : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderActivities(activities) {
+    if (!activities || activities.length === 0) return '<p class="no-activities">No activities planned</p>';
+    
+    return activities.map(act => `
+        <div class="activity-item">
+            <div class="activity-time">
+                <span class="time">${escapeHtml(act.time_slot)}</span>
+                <span class="duration">${escapeHtml(act.estimated_duration)}</span>
+            </div>
+            <div class="activity-content">
+                <h4>${escapeHtml(act.place_name)}</h4>
+                <p>${escapeHtml(act.description)}</p>
+                <div class="activity-meta">
+                    <span class="activity-cost">💰 ${formatCurrency(act.estimated_cost)}</span>
+                    ${act.travel_time_from_previous ? `<span>🚶 ${escapeHtml(act.travel_time_from_previous)}</span>` : ''}
+                    ${act.transport_mode ? `<span>🚗 ${escapeHtml(act.transport_mode)}</span>` : ''}
+                    ${act.booking_required ? `<span>📋 Booking required</span>` : ''}
+                </div>
+                ${act.tips && act.tips.length > 0 ? `
+                    <div class="activity-tips">
+                        <h5>Tips</h5>
+                        <ul>${act.tips.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>
+                    </div>
+                ` : ''}
+                ${act.warnings && act.warnings.length > 0 ? `
+                    <div class="activity-warnings">
+                        <h5>Warnings</h5>
+                        <ul>${act.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('')}</ul>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderMeals(meals) {
+    const mealIcons = {
+        'breakfast': '🍳',
+        'lunch': '🍜',
+        'dinner': '🍽️',
+        'snack': '🍿'
+    };
+
+    return `
+        <div class="meals-section">
+            <h3>🍴 Meal Recommendations</h3>
+            ${meals.map(meal => `
+                <div class="meal-item">
+                    <div class="meal-icon">${mealIcons[meal.meal_type] || '🍴'}</div>
+                    <div class="meal-content">
+                        <h4>${escapeHtml(meal.place_name)}</h4>
+                        <p>${meal.cuisine ? escapeHtml(meal.cuisine) : ''} ${meal.dietary_notes ? `• ${escapeHtml(meal.dietary_notes)}` : ''}</p>
+                        <div class="meal-meta">
+                            <span>💰 ${formatCurrency(meal.estimated_cost)}/person</span>
+                            ${meal.recommendation_reason ? `<span>⭐ ${escapeHtml(meal.recommendation_reason)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderBudget() {
+    const total = itineraryData.total_budget_estimate;
+    const breakdown = itineraryData.budget_breakdown || {};
+    
+    document.getElementById('total-budget').textContent = formatCurrency(total);
+    
+    const breakdownEl = document.getElementById('budget-breakdown');
+    const categories = [
+        { key: 'accommodation', label: 'Accommodation', icon: '🏨' },
+        { key: 'food', label: 'Food & Dining', icon: '🍽️' },
+        { key: 'activities', label: 'Activities', icon: '🎯' },
+        { key: 'transportation', label: 'Transportation', icon: '🚗' },
+        { key: 'shopping', label: 'Shopping', icon: '🛍️' },
+        { key: 'miscellaneous', label: 'Miscellaneous', icon: '📦' }
+    ];
+
+    breakdownEl.innerHTML = categories
+        .filter(cat => breakdown[cat.key] > 0)
+        .map(cat => `
+            <div class="budget-item">
+                <span class="label">${cat.icon} ${cat.label}</span>
+                <span class="value">${formatCurrency(breakdown[cat.key])}</span>
+            </div>
+        `).join('');
+}
+
+function renderNavigation() {
+    const navEl = document.getElementById('day-nav');
+    navEl.innerHTML = itineraryData.days.map(day => `
+        <a href="#day-${day.day_number}" onclick="scrollToDay(${day.day_number}); return false;">
+            Day ${day.day_number}: ${escapeHtml(day.theme.substring(0, 20))}${day.theme.length > 20 ? '...' : ''}
+        </a>
+    `).join('');
+}
+
+function scrollToDay(dayNumber) {
+    const element = document.getElementById(`day-${dayNumber}`);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function renderTips() {
+    const tipsEl = document.getElementById('general-tips');
+    const tips = itineraryData.general_tips || [];
+    
+    if (tips.length === 0) {
+        tipsEl.innerHTML = '<li>No tips available</li>';
+        return;
+    }
+    
+    tipsEl.innerHTML = tips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('');
+}
+
+function renderPacking() {
+    const packingEl = document.getElementById('packing-list');
+    const items = itineraryData.packing_suggestions || [];
+    
+    if (items.length === 0) {
+        packingEl.innerHTML = '<li>No suggestions available</li>';
+        return;
+    }
+    
+    packingEl.innerHTML = items.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+}
+
+function renderPhrases() {
+    const phrasesEl = document.getElementById('phrases-list');
+    const phrases = itineraryData.language_phrases || [];
+    
+    if (phrases.length === 0) {
+        phrasesEl.innerHTML = '<li>No phrases available</li>';
+        return;
+    }
+    
+    phrasesEl.innerHTML = phrases.map(phrase => `<li>${escapeHtml(phrase)}</li>`).join('');
+}
+
+function renderEmergency() {
+    const emergencyEl = document.getElementById('emergency-contacts');
+    const contacts = itineraryData.emergency_contacts || [];
+    
+    if (contacts.length === 0) {
+        emergencyEl.innerHTML = '<li>No emergency contacts available</li>';
+        return;
+    }
+    
+    emergencyEl.innerHTML = contacts.map(contact => `<li>${escapeHtml(contact)}</li>`).join('');
+}
+
+function renderWeather() {
+    const weatherCard = document.getElementById('weather-card');
+    const weatherInfo = document.getElementById('weather-info');
+    
+    if (itineraryData.weather_info) {
+        weatherCard.style.display = 'block';
+        weatherInfo.textContent = itineraryData.weather_info;
+    }
+}
+
+function initExport() {
+    document.getElementById('export-btn').addEventListener('click', exportToPDF);
+}
+
+async function exportToPDF() {
+    const btn = document.getElementById('export-btn');
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = `
+        <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round" style="animation: spin 1s linear infinite"/>
+        </svg>
+        Generating PDF...
+    `;
+    btn.disabled = true;
+
+    const element = document.getElementById('itinerary-content');
+    
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `${itineraryData.title.replace(/[^a-z0-9]/gi, '_')}_itinerary.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+            scale: 2,
+            useCORS: true,
+            letterRendering: true,
+            logging: false
+        },
+        jsPDF: { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'portrait' 
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    try {
+        await html2pdf().set(opt).from(element).save();
+    } catch (error) {
+        console.error('PDF export failed:', error);
+        alert('Failed to generate PDF. Please try again.');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+function initShare() {
+    const shareBtn = document.getElementById('share-btn');
+    const modal = document.getElementById('share-modal');
+    const closeBtn = document.getElementById('close-share-modal');
+    const toggle = document.getElementById('public-toggle');
+    const linkSection = document.getElementById('share-link-section');
+    const linkInput = document.getElementById('share-link');
+    const copyBtn = document.getElementById('copy-link-btn');
+
+    shareBtn.addEventListener('click', () => {
+        toggle.checked = itineraryData.is_public;
+        updateShareLink();
+        modal.classList.add('show');
+    });
+
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('show');
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('show');
+        }
+    });
+
+    toggle.addEventListener('change', async () => {
+        const isPublic = toggle.checked;
+        
+        try {
+            const response = await fetch(`/api/itinerary/${itineraryData.id}/visibility?is_public=${isPublic}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                itineraryData.is_public = isPublic;
+                itineraryData.share_code = data.share_code;
+                updateShareLink();
+            } else {
+                toggle.checked = !isPublic;
+                alert('Failed to update sharing settings');
+            }
+        } catch (error) {
+            toggle.checked = !isPublic;
+            alert('Connection error. Please try again.');
+        }
+    });
+
+    copyBtn.addEventListener('click', () => {
+        linkInput.select();
+        navigator.clipboard.writeText(linkInput.value).then(() => {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => {
+                copyBtn.textContent = 'Copy';
+            }, 2000);
+        });
+    });
+
+    function updateShareLink() {
+        if (itineraryData.is_public && itineraryData.share_code) {
+            linkSection.style.display = 'block';
+            linkInput.value = `${window.location.origin}/shared/${itineraryData.share_code}`;
+        } else {
+            linkSection.style.display = 'none';
+        }
+    }
+}
+
+function formatCurrency(amount) {
+    const currency = itineraryData?.currency || 'USD';
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(amount || 0);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showError(message) {
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('error-state').style.display = 'flex';
+    document.getElementById('error-message').textContent = message;
+}

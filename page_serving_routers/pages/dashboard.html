@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Aitinerary</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="brand">
+                <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="24" cy="24" r="24" fill="#4F46E5"/>
+                    <path d="M24 12L28 20H36L30 26L32 34L24 29L16 34L18 26L12 20H20L24 12Z" fill="white"/>
+                </svg>
+                <span>Aitinerary</span>
+            </div>
+            <div class="user-menu">
+                <span class="user-email" id="user-email">Loading...</span>
+                <button class="btn-logout" id="logout-btn">Sign Out</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1>Create Your Itinerary</h1>
+                <p>Transform YouTube travel vlogs into personalized day-by-day itineraries</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="form-section">
+                    <form id="generate-form">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
+                                        <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
+                                    </svg>
+                                    YouTube Videos
+                                </h2>
+                                <span class="hint">Add 1-5 travel vlogs to analyze</span>
+                            </div>
+                            <div class="card-body">
+                                <div id="url-inputs">
+                                    <div class="url-input-group">
+                                        <input type="url" class="youtube-url" placeholder="https://youtube.com/watch?v=..." required>
+                                        <span class="url-status"></span>
+                                        <button type="button" class="btn-remove-url" style="display: none;">×</button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-add-url" id="add-url-btn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Add Another Video
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                    Trip Preferences
+                                </h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="budget">Budget</label>
+                                        <div class="input-group">
+                                            <input type="number" id="budget" name="budget" min="100" placeholder="5000" required>
+                                            <select id="currency" name="currency">
+                                                <option value="USD">USD</option>
+                                                <option value="EUR">EUR</option>
+                                                <option value="GBP">GBP</option>
+                                                <option value="INR">INR</option>
+                                                <option value="JPY">JPY</option>
+                                                <option value="AUD">AUD</option>
+                                                <option value="CAD">CAD</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="trip-duration">Trip Duration (days)</label>
+                                        <input type="number" id="trip-duration" name="trip_duration_days" min="1" max="30" placeholder="7" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="trip-type">Trip Type</label>
+                                        <select id="trip-type" name="trip_type" required>
+                                            <option value="">Select...</option>
+                                            <option value="solo">Solo</option>
+                                            <option value="couple">Couple</option>
+                                            <option value="family">Family</option>
+                                            <option value="friends">Friends</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="num-travelers">Number of Travelers</label>
+                                        <input type="number" id="num-travelers" name="num_travelers" min="1" max="50" placeholder="2" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="activity-style">Activity Style</label>
+                                        <select id="activity-style" name="activity_style">
+                                            <option value="mixed">Mixed</option>
+                                            <option value="relaxing">Relaxing</option>
+                                            <option value="adventure">Adventure</option>
+                                            <option value="cultural">Cultural</option>
+                                            <option value="sporty">Sporty</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="accommodation">Accommodation</label>
+                                        <select id="accommodation" name="accommodation_preference">
+                                            <option value="mid-range">Mid-range</option>
+                                            <option value="budget">Budget</option>
+                                            <option value="luxury">Luxury</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="start-date">Start Date (Optional)</label>
+                                    <input type="date" id="start-date" name="start_date">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Dietary Restrictions</label>
+                                    <div class="checkbox-group">
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="dietary" value="vegetarian">
+                                            <span>Vegetarian</span>
+                                        </label>
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="dietary" value="vegan">
+                                            <span>Vegan</span>
+                                        </label>
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="dietary" value="halal">
+                                            <span>Halal</span>
+                                        </label>
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="dietary" value="kosher">
+                                            <span>Kosher</span>
+                                        </label>
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="dietary" value="gluten-free">
+                                            <span>Gluten-Free</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="mobility">Mobility Constraints</label>
+                                    <select id="mobility" name="mobility_constraints">
+                                        <option value="">None</option>
+                                        <option value="limited-walking">Limited Walking</option>
+                                        <option value="wheelchair">Wheelchair Accessible</option>
+                                        <option value="elderly-friendly">Elderly Friendly</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="must-visit">Must-Visit Places (Optional)</label>
+                                    <input type="text" id="must-visit" name="must_visit_places" placeholder="Eiffel Tower, Louvre Museum...">
+                                    <span class="hint">Separate places with commas</span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="additional-notes">Additional Notes (Optional)</label>
+                                    <textarea id="additional-notes" name="additional_notes" rows="3" maxlength="1000" placeholder="Any special requests or preferences..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="error-message" id="error-message"></div>
+
+                        <button type="submit" class="btn-generate" id="generate-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                            <span class="btn-text">Generate Itinerary</span>
+                            <span class="btn-loader" style="display: none;">
+                                <svg class="spinner" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+                                </svg>
+                                <span id="generate-status">Starting...</span>
+                            </span>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="sidebar">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                                Your Itineraries
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="itinerary-list" class="itinerary-list">
+                                <div class="loading-skeleton">
+                                    <div class="skeleton-item"></div>
+                                    <div class="skeleton-item"></div>
+                                    <div class="skeleton-item"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal" id="progress-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Generating Your Itinerary</h3>
+            </div>
+            <div class="modal-body">
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="progress-text" id="progress-text">Starting...</div>
+                </div>
+                <div class="progress-steps">
+                    <div class="progress-step" id="step-1">
+                        <span class="step-icon">📹</span>
+                        <span class="step-text">Extracting video transcripts</span>
+                    </div>
+                    <div class="progress-step" id="step-2">
+                        <span class="step-icon">🔍</span>
+                        <span class="step-text">Analyzing content</span>
+                    </div>
+                    <div class="progress-step" id="step-3">
+                        <span class="step-icon">✨</span>
+                        <span class="step-text">Generating itinerary</span>
+                    </div>
+                    <div class="progress-step" id="step-4">
+                        <span class="step-icon">✅</span>
+                        <span class="step-text">Finalizing</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
