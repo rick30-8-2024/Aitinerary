@@ -29,37 +29,34 @@ class MealRecommendation(BaseModel):
     meal_type: str = Field(..., description="breakfast, lunch, dinner, or snack")
     place_name: str = Field(..., description="Restaurant or food place name")
     cuisine: Optional[str] = Field(default=None, description="Type of cuisine")
-    estimated_cost: float = Field(..., ge=0, description="Estimated cost per person")
+    estimated_cost: float = Field(default=0, ge=0, description="Estimated cost per person")
+    cost_unknown: bool = Field(default=False, description="Whether the cost is unknown/unverified")
     dietary_notes: Optional[str] = Field(default=None, description="Dietary information")
     recommendation_reason: Optional[str] = Field(default=None, description="Why this is recommended")
     place_details: Optional[PlaceDetails] = Field(default=None, description="Detailed place info")
+    is_local_delicacy: bool = Field(default=False, description="Whether this is a local delicacy found via internet search")
+    source: Optional[str] = Field(default="vlog", description="Source of recommendation: 'vlog' or 'internet_search'")
 
 
 class Activity(BaseModel):
     """Schema for a single activity in the itinerary."""
     
-    time_slot: str = Field(..., description="Time range (e.g., '09:00 - 11:00')")
-    place_name: str = Field(..., description="Name of the place/activity")
-    description: str = Field(..., description="Description of the activity")
+    place_name: str = Field(..., description="Name of the place/location")
+    event_name: Optional[str] = Field(default=None, description="Short description of the event/purpose at this place (e.g., 'Sunrise View', 'Ganga Aarti')")
+    description: Optional[str] = Field(default=None, description="Description of the activity")
     estimated_cost: float = Field(default=0, ge=0, description="Estimated cost")
-    estimated_duration: str = Field(..., description="Expected duration (e.g., '2 hours')")
-    travel_time_from_previous: Optional[str] = Field(
-        default=None, 
-        description="Travel time from previous activity"
-    )
-    transport_mode: Optional[str] = Field(
-        default=None,
-        description="Recommended transport (walk, taxi, metro, etc.)"
-    )
+    cost_unknown: bool = Field(default=False, description="Whether the cost is unknown/unverified")
+    transport_cost: Optional[float] = Field(default=None, ge=0, description="Cost of transport to this location")
+    transport_cost_unknown: bool = Field(default=False, description="Whether the transport cost is unknown/unverified")
+    transport_mode: Optional[str] = Field(default=None, description="Transport mode - only if mentioned in vlog")
     tips: list[str] = Field(default_factory=list, description="Helpful tips for this activity")
     warnings: list[str] = Field(default_factory=list, description="Warnings or scam alerts")
     booking_required: bool = Field(default=False, description="Whether advance booking is needed")
     booking_url: Optional[str] = Field(default=None, description="Booking website URL")
     place_details: Optional[PlaceDetails] = Field(default=None, description="Detailed place info")
-    weather_alternative: Optional[str] = Field(
-        default=None,
-        description="Alternative activity for bad weather"
-    )
+    weather_alternative: Optional[str] = Field(default=None, description="Alternative activity for bad weather")
+    is_hidden_gem: bool = Field(default=False, description="Whether this is a hidden gem or local market")
+    source: Optional[str] = Field(default="vlog", description="Source of activity: 'vlog' or 'internet_search'")
 
 
 class DayPlan(BaseModel):
@@ -79,13 +76,14 @@ class DayPlan(BaseModel):
 class BudgetBreakdown(BaseModel):
     """Schema for budget breakdown by category."""
     
-    accommodation: float = Field(default=0, ge=0)
     food: float = Field(default=0, ge=0)
     activities: float = Field(default=0, ge=0)
     transportation: float = Field(default=0, ge=0)
     shopping: float = Field(default=0, ge=0)
     miscellaneous: float = Field(default=0, ge=0)
-    total: float = Field(default=0, ge=0)
+    subtotal_without_accommodation: float = Field(default=0, ge=0, description="Sum of all costs except accommodation")
+    accommodation_budget: float = Field(default=0, ge=0, description="Remaining budget available for accommodation")
+    total: float = Field(default=0, ge=0, description="User's total budget")
 
 
 class TranscriptAnalysis(BaseModel):
@@ -114,6 +112,10 @@ class Itinerary(BaseModel):
     budget_breakdown: BudgetBreakdown = Field(
         default_factory=BudgetBreakdown,
         description="Budget breakdown by category"
+    )
+    accommodation_note: Optional[str] = Field(
+        default=None,
+        description="Note about remaining budget for accommodation"
     )
     general_tips: list[str] = Field(default_factory=list, description="General travel tips")
     packing_suggestions: list[str] = Field(default_factory=list, description="What to pack")

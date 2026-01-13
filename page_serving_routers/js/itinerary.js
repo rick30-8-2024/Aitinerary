@@ -10,22 +10,22 @@ function formatTitleWithDate(title) {
     if (!itineraryData || !itineraryData.days || itineraryData.days.length === 0) {
         return toTitleCase(title);
     }
-    
+
     const firstDay = itineraryData.days[0];
     if (firstDay.date) {
         const date = new Date(firstDay.date);
         const day = date.getDate();
         const month = date.toLocaleString('en-US', { month: 'long' });
         const year = date.getFullYear();
-        
+
         const titleWithoutDate = title.replace(/\s*-\s*\w+\s+\d{4}$/, '').trim();
         return `${toTitleCase(titleWithoutDate)} - ${day} ${month} ${year}`;
     }
-    
+
     return toTitleCase(title);
 }
 
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async function () {
     setTimeout(() => {
         document.body.classList.remove('loading');
     }, 300);
@@ -79,12 +79,12 @@ async function loadItinerary(idOrCode) {
     const contentEl = document.getElementById('itinerary-content');
 
     try {
-        const endpoint = isSharedView 
+        const endpoint = isSharedView
             ? `/api/itinerary/shared/${idOrCode}`
             : `/api/itinerary/${idOrCode}`;
-        
-        const headers = isSharedView ? {} : { 
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}` 
+
+        const headers = isSharedView ? {} : {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         };
 
         const response = await fetch(endpoint, { headers });
@@ -94,10 +94,10 @@ async function loadItinerary(idOrCode) {
         }
 
         itineraryData = await response.json();
-        
+
         loadingEl.style.display = 'none';
         contentEl.style.display = 'block';
-        
+
         renderItinerary();
     } catch (error) {
         loadingEl.style.display = 'none';
@@ -143,23 +143,39 @@ function renderDays() {
     `).join('');
 }
 
+function formatActivityTitle(act) {
+    const placeName = toTitleCase(act.place_name);
+    if (act.event_name) {
+        return `${placeName} — ${toTitleCase(act.event_name)}`;
+    }
+    return placeName;
+}
+
+function formatCost(cost, isUnknown) {
+    if (isUnknown) {
+        return '<span class="cost-unknown">Price not confirmed</span>';
+    }
+    return formatCurrency(cost);
+}
+
 function renderActivities(activities) {
     if (!activities || activities.length === 0) return '<p class="no-activities">No activities planned</p>';
-    
+
     return activities.map(act => `
-        <div class="activity-item">
-            <div class="activity-time">
-                <span class="time">${escapeHtml(act.time_slot)}</span>
-                <span class="duration">${escapeHtml(act.estimated_duration)}</span>
-            </div>
+        <div class="activity-item ${act.is_hidden_gem ? 'hidden-gem' : ''}">
+
             <div class="activity-content">
-                <h4>${escapeHtml(toTitleCase(act.place_name))}</h4>
+                <h4>
+                    ${act.is_hidden_gem ? '<span class="gem-badge">💎 Hidden Gem</span>' : ''}
+                    ${escapeHtml(formatActivityTitle(act))}
+                </h4>
                 <p>${escapeHtml(act.description)}</p>
                 <div class="activity-meta">
-                    <span class="activity-cost">💰 ${formatCurrency(act.estimated_cost)}</span>
+                    <span class="activity-cost">💰 ${formatCost(act.estimated_cost, act.cost_unknown)}</span>
                     ${act.travel_time_from_previous ? `<span>🚶 ${escapeHtml(act.travel_time_from_previous)}</span>` : ''}
-                    ${act.transport_mode ? `<span>🚗 ${escapeHtml(act.transport_mode)}</span>` : ''}
+                    ${act.transport_mode ? `<span>🚗 ${escapeHtml(act.transport_mode)}${act.transport_cost_unknown ? ' (Price not confirmed)' : (act.transport_cost ? ` - ${formatCurrency(act.transport_cost)}` : '')}</span>` : ''}
                     ${act.booking_required ? `<span>📋 Booking required</span>` : ''}
+                    ${act.source === 'internet_search' ? `<span class="source-badge">🌐 Web</span>` : ''}
                 </div>
                 ${act.tips && act.tips.length > 0 ? `
                     <div class="activity-tips">
@@ -190,14 +206,18 @@ function renderMeals(meals) {
         <div class="meals-section">
             <h3>🍴 Meal Recommendations</h3>
             ${meals.map(meal => `
-                <div class="meal-item">
+                <div class="meal-item ${meal.is_local_delicacy ? 'local-delicacy' : ''}">
                     <div class="meal-icon">${mealIcons[meal.meal_type] || '🍴'}</div>
                     <div class="meal-content">
-                        <h4>${escapeHtml(toTitleCase(meal.place_name))}</h4>
+                        <h4>
+                            ${meal.is_local_delicacy ? '<span class="delicacy-badge">🏆 Local Delicacy</span>' : ''}
+                            ${escapeHtml(toTitleCase(meal.place_name))}
+                        </h4>
                         <p>${meal.cuisine ? escapeHtml(meal.cuisine) : ''} ${meal.dietary_notes ? `• ${escapeHtml(meal.dietary_notes)}` : ''}</p>
                         <div class="meal-meta">
-                            <span>💰 ${formatCurrency(meal.estimated_cost)}/person</span>
+                            <span>💰 ${formatCost(meal.estimated_cost, meal.cost_unknown)}/person</span>
                             ${meal.recommendation_reason ? `<span>⭐ ${escapeHtml(meal.recommendation_reason)}</span>` : ''}
+                            ${meal.source === 'internet_search' ? `<span class="source-badge">🌐 Web</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -209,12 +229,11 @@ function renderMeals(meals) {
 function renderBudget() {
     const total = itineraryData.total_budget_estimate;
     const breakdown = itineraryData.budget_breakdown || {};
-    
+
     document.getElementById('total-budget').textContent = formatCurrency(total);
-    
+
     const breakdownEl = document.getElementById('budget-breakdown');
     const categories = [
-        { key: 'accommodation', label: 'Accommodation', icon: '🏨' },
         { key: 'food', label: 'Food & Dining', icon: '🍽️' },
         { key: 'activities', label: 'Activities', icon: '🎯' },
         { key: 'transportation', label: 'Transportation', icon: '🚗' },
@@ -222,7 +241,7 @@ function renderBudget() {
         { key: 'miscellaneous', label: 'Miscellaneous', icon: '📦' }
     ];
 
-    breakdownEl.innerHTML = categories
+    let budgetHtml = categories
         .filter(cat => breakdown[cat.key] > 0)
         .map(cat => `
             <div class="budget-item">
@@ -230,19 +249,76 @@ function renderBudget() {
                 <span class="value">${formatCurrency(breakdown[cat.key])}</span>
             </div>
         `).join('');
+
+    if (breakdown.subtotal_without_accommodation > 0) {
+        budgetHtml += `
+            <div class="budget-item subtotal">
+                <span class="label">📊 Subtotal (excl. stay)</span>
+                <span class="value">${formatCurrency(breakdown.subtotal_without_accommodation)}</span>
+            </div>
+        `;
+    }
+
+    if (breakdown.accommodation_budget > 0) {
+        budgetHtml += `
+            <div class="budget-item accommodation-budget">
+                <span class="label">🏨 Budget for Accommodation</span>
+                <span class="value">${formatCurrency(breakdown.accommodation_budget)}</span>
+            </div>
+        `;
+    }
+
+    breakdownEl.innerHTML = budgetHtml;
+
+    if (itineraryData.accommodation_note) {
+        const existingNote = breakdownEl.parentElement.querySelector('.accommodation-note');
+        if (existingNote) {
+            existingNote.remove();
+        }
+        const noteEl = document.createElement('div');
+        noteEl.className = 'accommodation-note';
+        noteEl.innerHTML = `<p>💡 ${escapeHtml(itineraryData.accommodation_note)}</p>`;
+        breakdownEl.parentElement.appendChild(noteEl);
+    }
 }
 
 function renderNavigation() {
     const navEl = document.getElementById('day-nav');
-    navEl.innerHTML = itineraryData.days.map(day => `
-        <a href="#day-${day.day_number}" onclick="scrollToDay(${day.day_number}); return false;">
+    const dayLinks = itineraryData.days.map((day, index) => `
+        <a href="#day-${day.day_number}" onclick="scrollToDay(${day.day_number}, ${index === 0}); return false;">
             Day ${day.day_number}: ${escapeHtml(day.theme.substring(0, 20))}${day.theme.length > 20 ? '...' : ''}
         </a>
     `).join('');
+
+    const extraLinks = `
+        <div class="nav-separator"></div>
+        <a href="#tips-section" onclick="scrollToSection('tips-section'); return false;">
+            📋 Travel Tips
+        </a>
+        <a href="#packing-section" onclick="scrollToSection('packing-section'); return false;">
+            🎒 Packing Suggestions
+        </a>
+        <a href="#phrases-section" onclick="scrollToSection('phrases-section'); return false;">
+            💬 Useful Phrases
+        </a>
+    `;
+
+    navEl.innerHTML = dayLinks + extraLinks;
 }
 
-function scrollToDay(dayNumber) {
+function scrollToDay(dayNumber, isFirstDay) {
+    if (isFirstDay) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
     const element = document.getElementById(`day-${dayNumber}`);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function scrollToSection(sectionId) {
+    const element = document.getElementById(sectionId);
     if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -251,36 +327,36 @@ function scrollToDay(dayNumber) {
 function renderTips() {
     const tipsEl = document.getElementById('general-tips');
     const tips = itineraryData.general_tips || [];
-    
+
     if (tips.length === 0) {
         tipsEl.innerHTML = '<li>No tips available</li>';
         return;
     }
-    
+
     tipsEl.innerHTML = tips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('');
 }
 
 function renderPacking() {
     const packingEl = document.getElementById('packing-list');
     const items = itineraryData.packing_suggestions || [];
-    
+
     if (items.length === 0) {
         packingEl.innerHTML = '<li>No suggestions available</li>';
         return;
     }
-    
+
     packingEl.innerHTML = items.map(item => `<li>${escapeHtml(item)}</li>`).join('');
 }
 
 function renderPhrases() {
     const phrasesEl = document.getElementById('phrases-list');
     const phrases = itineraryData.language_phrases || [];
-    
+
     if (phrases.length === 0) {
         phrasesEl.innerHTML = '<li>No phrases available</li>';
         return;
     }
-    
+
     phrasesEl.innerHTML = phrases.map(phrase => `<li>${escapeHtml(phrase)}</li>`).join('');
 }
 
@@ -291,7 +367,7 @@ function initExport() {
 async function exportToPDF() {
     const btn = document.getElementById('export-btn');
     const originalText = btn.innerHTML;
-    
+
     btn.innerHTML = `
         <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round" style="animation: spin 1s linear infinite"/>
@@ -300,28 +376,8 @@ async function exportToPDF() {
     `;
     btn.disabled = true;
 
-    const element = document.getElementById('itinerary-content');
-    
-    const opt = {
-        margin: [10, 10, 10, 10],
-        filename: `${itineraryData.title.replace(/[^a-z0-9]/gi, '_')}_itinerary.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-            scale: 2,
-            useCORS: true,
-            letterRendering: true,
-            logging: false
-        },
-        jsPDF: { 
-            unit: 'mm', 
-            format: 'a4', 
-            orientation: 'portrait' 
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-
     try {
-        await html2pdf().set(opt).from(element).save();
+        await PDFGenerator.generatePDF(itineraryData);
     } catch (error) {
         console.error('PDF export failed:', error);
         alert('Failed to generate PDF. Please try again.');
@@ -358,7 +414,7 @@ function initShare() {
 
     toggle.addEventListener('change', async () => {
         const isPublic = toggle.checked;
-        
+
         try {
             const response = await fetch(`/api/itinerary/${itineraryData.id}/visibility?is_public=${isPublic}`, {
                 method: 'PATCH',
@@ -427,54 +483,53 @@ function initStickyNavigation() {
     const navCard = document.querySelector('.nav-card');
     const budgetCard = document.querySelector('.budget-card');
     const sidebar = document.querySelector('.sidebar');
-    const header = document.querySelector('.header');
-    
-    if (!navCard || !budgetCard || !sidebar || !header) return;
-    
+
+    if (!navCard || !budgetCard || !sidebar) return;
+
     let placeholder = null;
     let isSticky = false;
-    
+    const stickyOffset = 20;
+
     function handleScroll() {
         const budgetRect = budgetCard.getBoundingClientRect();
-        const headerHeight = header.offsetHeight;
         const stickyTrigger = budgetRect.bottom;
         const sidebarRect = sidebar.getBoundingClientRect();
-        
-        if (stickyTrigger <= headerHeight && !isSticky) {
+
+        if (stickyTrigger <= stickyOffset && !isSticky) {
             isSticky = true;
-            
+
             placeholder = document.createElement('div');
             placeholder.style.height = navCard.offsetHeight + 'px';
             placeholder.style.visibility = 'hidden';
             navCard.parentNode.insertBefore(placeholder, navCard.nextSibling);
-            
+
             navCard.classList.add('is-sticky');
             navCard.style.right = (window.innerWidth - sidebarRect.right) + 'px';
-        } else if (stickyTrigger > headerHeight && isSticky) {
+        } else if (stickyTrigger > stickyOffset && isSticky) {
             isSticky = false;
             navCard.classList.remove('is-sticky');
             navCard.style.right = '';
-            
+
             if (placeholder && placeholder.parentNode) {
                 placeholder.parentNode.removeChild(placeholder);
                 placeholder = null;
             }
         }
-        
+
         if (isSticky) {
             navCard.style.right = (window.innerWidth - sidebarRect.right) + 'px';
         }
     }
-    
+
     function handleResize() {
         if (isSticky) {
             const sidebarRect = sidebar.getBoundingClientRect();
             navCard.style.right = (window.innerWidth - sidebarRect.right) + 'px';
         }
     }
-    
+
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleResize, { passive: true });
-    
+
     handleScroll();
 }

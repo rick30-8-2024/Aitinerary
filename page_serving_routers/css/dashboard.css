@@ -130,7 +130,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 14px;
+    padding: 10px 12px;
     background: transparent;
     color: var(--muted);
     border: none;
@@ -497,6 +497,216 @@ body {
 .btn-add-url:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.video-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.video-card {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.56);
+    border: 1px solid rgba(11, 11, 15, 0.12);
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.video-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.10);
+}
+
+.video-card-add {
+    border: 2px dashed rgba(11, 11, 15, 0.22);
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-card-add:hover {
+    border-color: rgba(11, 11, 15, 0.35);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.video-card-add-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    transition: color var(--transition);
+}
+
+.video-card-add:hover .video-card-add-content {
+    color: var(--text);
+}
+
+.video-card-add-content svg {
+    opacity: 0.7;
+}
+
+.video-card-add-content span {
+    font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.video-card-thumbnail {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.video-card-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-card-thumbnail .video-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity var(--transition);
+}
+
+.video-card-thumbnail:hover .video-card-overlay {
+    opacity: 1;
+}
+
+.video-card-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    background: rgba(249, 67, 70, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity var(--transition), transform var(--transition);
+    z-index: 10;
+}
+
+.video-card-thumbnail:hover .video-card-remove {
+    opacity: 1;
+}
+
+.video-card-remove:hover {
+    transform: scale(1.1);
+    background: var(--danger);
+}
+
+.video-card-remove svg {
+    width: 12px;
+    height: 12px;
+}
+
+.video-card-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity var(--transition);
+    pointer-events: none;
+}
+
+.video-card-thumbnail:hover .video-card-play {
+    opacity: 1;
+}
+
+.video-card-play svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text);
+    margin-left: 2px;
+}
+
+.video-card-title {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 6px 8px;
+    font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+    opacity: 0;
+    transition: opacity var(--transition);
+}
+
+.video-card-thumbnail:hover .video-card-title {
+    opacity: 1;
+}
+
+#add-video-modal .form-group {
+    margin-bottom: 16px;
+}
+
+#add-video-modal .form-group input {
+    width: 100%;
+    padding: 10px 0;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
+    font-size: 13px;
+    background: transparent;
+    outline: none;
+    transition: border-color var(--transition);
+}
+
+#add-video-modal .form-group input:focus {
+    border-bottom-color: var(--line-strong);
+}
+
+#add-video-modal .form-group input.valid {
+    border-bottom-color: var(--success);
+}
+
+#add-video-modal .form-group input.invalid {
+    border-bottom-color: var(--danger);
+}
+
+#add-video-modal .hint {
+    display: block;
+    font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
+    font-size: 11px;
+    color: var(--muted-2);
+    margin-top: 6px;
+    transition: color var(--transition);
+}
+
+#add-video-modal .hint.error {
+    color: var(--danger);
+}
+
+#add-video-modal .hint.success {
+    color: var(--success);
 }
 
 .form-row {

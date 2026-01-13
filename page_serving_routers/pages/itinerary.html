@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Itinerary - Aitinerary</title>
     <link rel="stylesheet" href="/css/itinerary.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 </head>
 <body class="loading">
     <div class="page-loader" id="page-loader">
@@ -109,7 +110,7 @@
                     <div class="main-column">
                         <div id="days-container" class="days-container"></div>
 
-                        <div class="tips-section card">
+                        <div class="tips-section card" id="tips-section">
                             <div class="card-header">
                                 <h2>
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -125,7 +126,7 @@
                             </div>
                         </div>
 
-                        <div class="packing-section card">
+                        <div class="packing-section card" id="packing-section">
                             <div class="card-header">
                                 <h2>
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -141,7 +142,7 @@
                             </div>
                         </div>
 
-                        <div class="phrases-section card">
+                        <div class="phrases-section card" id="phrases-section">
                             <div class="card-header">
                                 <h2>
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -217,6 +218,7 @@
         </div>
     </div>
 
+    <script src="/js/pdf-generator.js"></script>
     <script src="/js/itinerary.js"></script>
 </body>
 </html>

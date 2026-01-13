@@ -81,8 +81,7 @@ body {
 }
 
 .header {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 100;
     background: transparent;
     flex-shrink: 0;
@@ -209,6 +208,19 @@ body {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
 }
 
 .error-state svg {
@@ -393,25 +405,7 @@ body {
     margin-bottom: 0;
 }
 
-.activity-time {
-    min-width: 100px;
-    text-align: center;
-}
 
-.activity-time .time {
-    font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-    display: block;
-    margin-bottom: 4px;
-}
-
-.activity-time .duration {
-    font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
-    font-size: 12px;
-    color: var(--muted-2);
-}
 
 .activity-content {
     flex: 1;
@@ -451,6 +445,12 @@ body {
 .activity-cost {
     color: var(--success) !important;
     font-weight: 600;
+}
+
+.cost-unknown {
+    color: var(--warning) !important;
+    font-style: italic;
+    font-weight: 500;
 }
 
 .activity-tips {
@@ -525,6 +525,32 @@ body {
     font-size: 11px;
 }
 
+.activity-item.hidden-gem {
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.gem-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(124, 58, 237, 0.9) 100%);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.source-badge {
+    background: rgba(59, 130, 246, 0.15);
+    color: rgba(59, 130, 246, 0.9);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
 .meal-item {
     display: flex;
     gap: 16px;
@@ -534,6 +560,23 @@ body {
     border: 1px solid rgba(253, 230, 138, 0.6);
     margin-bottom: 16px;
     backdrop-filter: blur(10px);
+}
+
+.meal-item.local-delicacy {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.2) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.delicacy-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(217, 119, 6, 0.9) 100%);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+    vertical-align: middle;
 }
 
 .meal-icon {
@@ -644,7 +687,7 @@ body {
 
 .nav-card.is-sticky {
     position: fixed;
-    top: 80px;
+    top: 20px;
     width: 340px;
     z-index: 50;
 }
@@ -695,6 +738,53 @@ body {
     color: var(--text);
 }
 
+.budget-item.subtotal {
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+}
+
+.budget-item.subtotal .label,
+.budget-item.subtotal .value {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.budget-item.accommodation-budget {
+    margin-top: 4px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.08) 100%);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.budget-item.accommodation-budget .label {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.budget-item.accommodation-budget .value {
+    color: var(--success);
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.accommodation-note {
+    margin-top: 16px;
+    padding: 14px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(37, 99, 235, 0.05) 100%);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.accommodation-note p {
+    font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin: 0;
+}
+
 .day-nav {
     display: flex;
     flex-direction: column;
@@ -716,6 +806,12 @@ body {
 .day-nav a.active {
     background: rgba(255, 255, 255, 0.6);
     color: var(--text);
+}
+
+.nav-separator {
+    height: 1px;
+    background: var(--line);
+    margin: 8px 0;
 }
 
 .emergency-list {

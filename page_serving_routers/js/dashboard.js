@@ -4,6 +4,11 @@
     let currentStep = 1;
     const totalSteps = 3;
     let itineraries = [];
+    let videoUrls = [];
+    const MAX_VIDEOS = 5;
+    let pollingInterval = null;
+    const POLLING_INTERVAL_MS = 5000;
+    let updatePillFn = null;
 
     function initPageLoader() {
         const shaderFrame = document.querySelector('.shader-frame');
@@ -77,7 +82,8 @@
         setupLogoutModal();
         setupDeleteModal();
         setupWizardNavigation();
-        setupUrlInputs();
+        setupVideoCards();
+        setupAddVideoModal();
         setupFormSubmission();
         setupSuccessModal();
         setupSearch();
@@ -158,6 +164,8 @@
             }
         }
 
+        updatePillFn = updatePill;
+
         measureExpandedWidths();
         updatePill(false);
 
@@ -186,6 +194,7 @@
                 if (section === 'create') {
                     createSection.classList.add('active');
                     historySection.classList.remove('active');
+                    stopPolling();
                 } else {
                     createSection.classList.remove('active');
                     historySection.classList.add('active');
@@ -356,17 +365,8 @@
         document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
 
         if (currentStep === 1) {
-            const urls = document.querySelectorAll('.youtube-url');
-            let hasValidUrl = false;
-            urls.forEach(input => {
-                if (input.value.trim() && isValidYouTubeUrl(input.value.trim())) {
-                    hasValidUrl = true;
-                } else if (input.value.trim()) {
-                    input.classList.add('error');
-                }
-            });
-            if (!hasValidUrl) {
-                errorEl.textContent = 'Please add at least one valid YouTube URL.';
+            if (videoUrls.length === 0) {
+                errorEl.textContent = 'Please add at least one YouTube video.';
                 errorEl.classList.add('show');
                 return false;
             }
@@ -398,72 +398,201 @@
         const patterns = [
             /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=[\w-]+/,
             /^(https?:\/\/)?(www\.)?youtu\.be\/[\w-]+/,
-            /^(https?:\/\/)?(www\.)?youtube\.com\/embed\/[\w-]+/
+            /^(https?:\/\/)?(www\.)?youtube\.com\/embed\/[\w-]+/,
+            /^(https?:\/\/)?(www\.)?youtube\.com\/shorts\/[\w-]+/
         ];
         return patterns.some(p => p.test(url));
     }
 
-    function setupUrlInputs() {
-        const addBtn = document.getElementById('add-url-btn');
-        const container = document.getElementById('url-inputs');
-
+    function setupVideoCards() {
+        const addBtn = document.getElementById('add-video-btn');
+        
         addBtn.addEventListener('click', () => {
-            const count = container.querySelectorAll('.url-input-group').length;
-            if (count >= 5) {
-                addBtn.disabled = true;
+            if (videoUrls.length >= MAX_VIDEOS) return;
+            document.getElementById('add-video-modal').classList.add('show');
+            document.getElementById('video-url-input').focus();
+        });
+
+        renderVideoCards();
+    }
+
+    function setupAddVideoModal() {
+        const modal = document.getElementById('add-video-modal');
+        const input = document.getElementById('video-url-input');
+        const hint = document.getElementById('video-url-hint');
+        const cancelBtn = document.getElementById('cancel-add-video');
+        const confirmBtn = document.getElementById('confirm-add-video');
+        let validationTimeout;
+
+        cancelBtn.addEventListener('click', () => {
+            closeAddVideoModal();
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeAddVideoModal();
+            }
+        });
+
+        input.addEventListener('input', () => {
+            clearTimeout(validationTimeout);
+            const url = input.value.trim();
+
+            if (!url) {
+                input.className = '';
+                hint.className = 'hint';
+                hint.textContent = 'Paste a YouTube video link';
+                confirmBtn.disabled = true;
                 return;
             }
 
-            const group = document.createElement('div');
-            group.className = 'url-input-group';
-            group.innerHTML = `
-                <input type="url" class="youtube-url" placeholder="https://youtube.com/watch?v=..." required>
-                <span class="url-status"></span>
-                <button type="button" class="btn-remove-url">×</button>
-            `;
-            container.appendChild(group);
-
-            setupUrlValidation(group.querySelector('.youtube-url'));
-            group.querySelector('.btn-remove-url').addEventListener('click', () => {
-                group.remove();
-                updateAddButton();
-            });
-
-            updateAddButton();
+            validationTimeout = setTimeout(() => {
+                if (isValidYouTubeUrl(url)) {
+                    const videoId = extractVideoId(url);
+                    if (videoUrls.some(v => v.id === videoId)) {
+                        input.className = 'invalid';
+                        hint.className = 'hint error';
+                        hint.textContent = 'This video has already been added';
+                        confirmBtn.disabled = true;
+                    } else {
+                        input.className = 'valid';
+                        hint.className = 'hint success';
+                        hint.textContent = 'Valid YouTube URL';
+                        confirmBtn.disabled = false;
+                    }
+                } else {
+                    input.className = 'invalid';
+                    hint.className = 'hint error';
+                    hint.textContent = 'Please enter a valid YouTube URL';
+                    confirmBtn.disabled = true;
+                }
+            }, 300);
         });
 
-        const firstInput = container.querySelector('.youtube-url');
-        if (firstInput) setupUrlValidation(firstInput);
+        confirmBtn.addEventListener('click', async () => {
+            const url = input.value.trim();
+            if (!url || !isValidYouTubeUrl(url)) return;
 
-        function updateAddButton() {
-            const count = container.querySelectorAll('.url-input-group').length;
-            addBtn.disabled = count >= 5;
+            const videoId = extractVideoId(url);
+            if (videoUrls.some(v => v.id === videoId)) return;
 
-            const removeButtons = container.querySelectorAll('.btn-remove-url');
-            removeButtons.forEach((btn, i) => {
-                btn.style.display = count > 1 ? 'block' : 'none';
+            const btnText = confirmBtn.querySelector('.btn-text');
+            const btnLoader = confirmBtn.querySelector('.btn-loader');
+
+            confirmBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoader.style.display = 'flex';
+
+            try {
+                const thumbnail = getYouTubeThumbnail(videoId);
+                
+                videoUrls.push({
+                    id: videoId,
+                    url: url,
+                    thumbnail: thumbnail
+                });
+
+                renderVideoCards();
+                closeAddVideoModal();
+
+            } catch (err) {
+                console.error('Error adding video:', err);
+                hint.className = 'hint error';
+                hint.textContent = 'Failed to add video. Please try again.';
+            } finally {
+                confirmBtn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoader.style.display = 'none';
+            }
+        });
+
+        function closeAddVideoModal() {
+            modal.classList.remove('show');
+            input.value = '';
+            input.className = '';
+            hint.className = 'hint';
+            hint.textContent = 'Paste a YouTube video link';
+            confirmBtn.disabled = true;
+        }
+    }
+
+    function extractVideoId(url) {
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/
+        ];
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) return match[1];
+        }
+        return null;
+    }
+
+    function getYouTubeThumbnail(videoId) {
+        return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+    }
+
+    function renderVideoCards() {
+        const grid = document.getElementById('video-cards-grid');
+        const addBtn = document.getElementById('add-video-btn');
+
+        grid.innerHTML = '';
+
+        videoUrls.forEach((video, index) => {
+            const card = document.createElement('div');
+            card.className = 'video-card video-card-thumbnail';
+            card.innerHTML = `
+                <img src="${video.thumbnail}" alt="Video thumbnail" onerror="this.src='https://via.placeholder.com/320x180?text=No+Thumbnail'">
+                <div class="video-card-overlay"></div>
+                <button type="button" class="video-card-remove" data-index="${index}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="video-card-play">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </div>
+            `;
+            grid.appendChild(card);
+
+            card.querySelector('.video-card-remove').addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeVideo(index);
+            });
+
+            card.addEventListener('click', () => {
+                window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank');
+            });
+        });
+
+        if (videoUrls.length < MAX_VIDEOS) {
+            const addCard = document.createElement('button');
+            addCard.type = 'button';
+            addCard.className = 'video-card video-card-add';
+            addCard.id = 'add-video-btn';
+            addCard.innerHTML = `
+                <div class="video-card-add-content">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Add Video</span>
+                </div>
+            `;
+            grid.appendChild(addCard);
+
+            addCard.addEventListener('click', () => {
+                document.getElementById('add-video-modal').classList.add('show');
+                document.getElementById('video-url-input').focus();
             });
         }
     }
 
-    function setupUrlValidation(input) {
-        let timeout;
-        input.addEventListener('input', () => {
-            const status = input.nextElementSibling;
-            clearTimeout(timeout);
-            status.className = 'url-status';
-
-            if (!input.value.trim()) return;
-
-            status.className = 'url-status loading';
-            timeout = setTimeout(() => {
-                if (isValidYouTubeUrl(input.value.trim())) {
-                    status.className = 'url-status valid';
-                } else {
-                    status.className = 'url-status invalid';
-                }
-            }, 500);
-        });
+    function removeVideo(index) {
+        videoUrls.splice(index, 1);
+        renderVideoCards();
     }
 
     function setupFormSubmission() {
@@ -473,9 +602,7 @@
         generateBtn.addEventListener('click', async () => {
             if (!validateCurrentStep()) return;
 
-            const urls = Array.from(document.querySelectorAll('.youtube-url'))
-                .map(i => i.value.trim())
-                .filter(u => u && isValidYouTubeUrl(u));
+            const urls = videoUrls.map(v => v.url);
 
             const dietary = Array.from(document.querySelectorAll('input[name="dietary"]:checked'))
                 .map(c => c.value);
@@ -541,15 +668,8 @@
 
     function resetForm() {
         document.getElementById('generate-form').reset();
-        const container = document.getElementById('url-inputs');
-        container.innerHTML = `
-            <div class="url-input-group">
-                <input type="url" class="youtube-url" placeholder="https://youtube.com/watch?v=..." required>
-                <span class="url-status"></span>
-                <button type="button" class="btn-remove-url" style="display: none;">×</button>
-            </div>
-        `;
-        setupUrlValidation(container.querySelector('.youtube-url'));
+        videoUrls = [];
+        renderVideoCards();
         goToStep(1);
 
         document.querySelectorAll('.progress-step').forEach(s => {
@@ -572,6 +692,11 @@
             document.querySelector('.island-tab[data-section="history"]').classList.add('active');
             document.getElementById('section-create').classList.remove('active');
             document.getElementById('section-history').classList.add('active');
+            
+            if (updatePillFn) {
+                updatePillFn(true);
+            }
+            
             loadItineraries();
         });
     }
@@ -612,6 +737,53 @@
         }
     }
 
+    function stopPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+    }
+
+    function startPolling() {
+        stopPolling();
+        
+        const hasGeneratingItineraries = itineraries.some(it => it.status === 'generating');
+        
+        if (hasGeneratingItineraries) {
+            pollingInterval = setInterval(async () => {
+                const historySection = document.getElementById('section-history');
+                if (!historySection.classList.contains('active')) {
+                    stopPolling();
+                    return;
+                }
+                
+                try {
+                    const res = await fetch(`${API_BASE}/api/itinerary/list`, {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+
+                    if (!res.ok) return;
+
+                    const updatedItineraries = await res.json();
+                    
+                    const hasChanges = JSON.stringify(updatedItineraries) !== JSON.stringify(itineraries);
+                    
+                    if (hasChanges) {
+                        itineraries = updatedItineraries;
+                        renderItineraries(itineraries);
+                        
+                        const stillGenerating = itineraries.some(it => it.status === 'generating');
+                        if (!stillGenerating) {
+                            stopPolling();
+                        }
+                    }
+                } catch (err) {
+                    console.error('Polling error:', err);
+                }
+            }, POLLING_INTERVAL_MS);
+        }
+    }
+
     async function loadItineraries() {
         const grid = document.getElementById('itinerary-grid');
         const emptyState = document.getElementById('empty-history');
@@ -629,13 +801,16 @@
                 grid.innerHTML = '';
                 emptyState.style.display = 'block';
                 emptyState.querySelector('p').innerHTML = 'No itineraries yet.<br>Create your first one!';
+                stopPolling();
             } else {
                 emptyState.style.display = 'none';
                 renderItineraries(itineraries);
+                startPolling();
             }
         } catch (err) {
             console.error(err);
             grid.innerHTML = '<p style="color: var(--muted); text-align: center;">Failed to load itineraries.</p>';
+            stopPolling();
         }
     }
 

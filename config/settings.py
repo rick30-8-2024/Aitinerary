@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     DATABASE_NAME: str = "aitinerary"
     
     GEMINI_API_KEY: str = ""
+    GEMINI_MODEL_NAME: str = "gemini-3-flash-preview"
     
     JWT_SECRET: str = "your-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
