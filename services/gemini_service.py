@@ -599,9 +599,13 @@ IMPORTANT:
             
             days = []
             for day_data in data.get("days", []):
-                activities = [
-                    Activity(**act) for act in day_data.get("activities", [])
-                ]
+                activities = []
+                for act in day_data.get("activities", []):
+                    if act.get("warnings") is None:
+                        act["warnings"] = []
+                    if act.get("tips") is None:
+                        act["tips"] = []
+                    activities.append(Activity(**act))
                 meals = [
                     MealRecommendation(**meal) for meal in day_data.get("meals", [])
                 ]
@@ -723,9 +727,13 @@ RESPOND ONLY WITH THE JSON OBJECT, no additional text."""
             
             days = []
             for day_data in data.get("days", []):
-                activities = [
-                    Activity(**act) for act in day_data.get("activities", [])
-                ]
+                activities = []
+                for act in day_data.get("activities", []):
+                    if act.get("warnings") is None:
+                        act["warnings"] = []
+                    if act.get("tips") is None:
+                        act["tips"] = []
+                    activities.append(Activity(**act))
                 meals = [
                     MealRecommendation(**meal) for meal in day_data.get("meals", [])
                 ]

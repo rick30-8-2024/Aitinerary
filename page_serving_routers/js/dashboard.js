@@ -4,7 +4,7 @@
     let currentStep = 1;
     const totalSteps = 3;
     let itineraries = [];
-    let videoUrls = [];
+    let videoData = [];
     const MAX_VIDEOS = 5;
     let pollingInterval = null;
     const POLLING_INTERVAL_MS = 5000;
@@ -365,8 +365,14 @@
         document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
 
         if (currentStep === 1) {
-            if (videoUrls.length === 0) {
+            const validVideos = videoData.filter(v => v.status === 'completed');
+            if (videoData.length === 0) {
                 errorEl.textContent = 'Please add at least one YouTube video.';
+                errorEl.classList.add('show');
+                return false;
+            }
+            if (validVideos.length === 0) {
+                errorEl.textContent = 'Please wait for at least one video to finish processing or try different videos.';
                 errorEl.classList.add('show');
                 return false;
             }
@@ -449,7 +455,7 @@
             validationTimeout = setTimeout(() => {
                 if (isValidYouTubeUrl(url)) {
                     const videoId = extractVideoId(url);
-                    if (videoUrls.some(v => v.id === videoId)) {
+                    if (videoData.some(v => v.id === videoId)) {
                         input.className = 'invalid';
                         hint.className = 'hint error';
                         hint.textContent = 'This video has already been added';
@@ -474,7 +480,7 @@
             if (!url || !isValidYouTubeUrl(url)) return;
 
             const videoId = extractVideoId(url);
-            if (videoUrls.some(v => v.id === videoId)) return;
+            if (videoData.some(v => v.id === videoId)) return;
 
             const btnText = confirmBtn.querySelector('.btn-text');
             const btnLoader = confirmBtn.querySelector('.btn-loader');
@@ -486,14 +492,21 @@
             try {
                 const thumbnail = getYouTubeThumbnail(videoId);
                 
-                videoUrls.push({
+                const videoEntry = {
                     id: videoId,
                     url: url,
-                    thumbnail: thumbnail
-                });
+                    thumbnail: thumbnail,
+                    status: 'loading',
+                    title: null,
+                    transcript: null,
+                    error: null
+                };
 
+                videoData.push(videoEntry);
                 renderVideoCards();
                 closeAddVideoModal();
+
+                fetchVideoTranscript(videoEntry);
 
             } catch (err) {
                 console.error('Error adding video:', err);
@@ -531,18 +544,86 @@
         return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
     }
 
+    async function fetchVideoTranscript(videoEntry) {
+        try {
+            const response = await fetch(`${API_BASE}/api/youtube/process`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: videoEntry.url,
+                    languages: ['en']
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to process video');
+            }
+
+            const data = await response.json();
+            videoEntry.status = 'completed';
+            videoEntry.title = data.metadata.title;
+            videoEntry.transcript = data.transcript;
+            videoEntry.metadata = data.metadata;
+            
+        } catch (error) {
+            console.error('Error fetching transcript:', error);
+            videoEntry.status = 'error';
+            videoEntry.error = error.message;
+        }
+        
+        renderVideoCards();
+    }
+
     function renderVideoCards() {
         const grid = document.getElementById('video-cards-grid');
         const addBtn = document.getElementById('add-video-btn');
 
         grid.innerHTML = '';
 
-        videoUrls.forEach((video, index) => {
+        videoData.forEach((video, index) => {
             const card = document.createElement('div');
-            card.className = 'video-card video-card-thumbnail';
+            let cardClass = 'video-card video-card-thumbnail';
+            let statusOverlay = '';
+            let clickable = true;
+            
+            if (video.status === 'loading') {
+                cardClass += ' loading';
+                statusOverlay = `
+                    <div class="video-status-badge loading">
+                        <div class="spinner"></div>
+                    </div>
+                `;
+                clickable = false;
+            } else if (video.status === 'error') {
+                cardClass += ' error';
+                statusOverlay = `
+                    <div class="video-status-badge error" title="${video.error}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </div>
+                `;
+                clickable = false;
+            } else if (video.status === 'completed') {
+                statusOverlay = `
+                    <div class="video-status-badge success">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                `;
+            }
+
+            card.className = cardClass;
             card.innerHTML = `
                 <img src="${video.thumbnail}" alt="Video thumbnail" onerror="this.src='https://via.placeholder.com/320x180?text=No+Thumbnail'">
                 <div class="video-card-overlay"></div>
+                ${statusOverlay}
                 <button type="button" class="video-card-remove" data-index="${index}">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -562,12 +643,14 @@
                 removeVideo(index);
             });
 
-            card.addEventListener('click', () => {
-                window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank');
-            });
+            if (clickable) {
+                card.addEventListener('click', () => {
+                    window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank');
+                });
+            }
         });
 
-        if (videoUrls.length < MAX_VIDEOS) {
+        if (videoData.length < MAX_VIDEOS) {
             const addCard = document.createElement('button');
             addCard.type = 'button';
             addCard.className = 'video-card video-card-add';
@@ -591,7 +674,7 @@
     }
 
     function removeVideo(index) {
-        videoUrls.splice(index, 1);
+        videoData.splice(index, 1);
         renderVideoCards();
     }
 
@@ -602,7 +685,21 @@
         generateBtn.addEventListener('click', async () => {
             if (!validateCurrentStep()) return;
 
-            const urls = videoUrls.map(v => v.url);
+            const validVideos = videoData.filter(v => v.status === 'completed');
+            if (validVideos.length === 0) {
+                const errorEl = document.getElementById('error-message');
+                if (videoData.length === 1 && videoData[0].status === 'error') {
+                    errorEl.textContent = 'Sorry, the video could not be processed. Please try with a different video or check if the video has transcripts available.';
+                } else if (videoData.some(v => v.status === 'error')) {
+                    errorEl.textContent = 'Some videos failed to process. Please remove failed videos or add working ones to proceed.';
+                } else {
+                    errorEl.textContent = 'Please wait for videos to finish processing before generating your itinerary.';
+                }
+                errorEl.classList.add('show');
+                return;
+            }
+
+            const urls = validVideos.map(v => v.url);
 
             const dietary = Array.from(document.querySelectorAll('input[name="dietary"]:checked'))
                 .map(c => c.value);
@@ -668,7 +765,7 @@
 
     function resetForm() {
         document.getElementById('generate-form').reset();
-        videoUrls = [];
+        videoData = [];
         renderVideoCards();
         goToStep(1);
 
@@ -844,6 +941,12 @@
                     In Progress${it.progress ? ` (${it.progress}%)` : ''}
                 </span>`;
                 cardClass += ' generating';
+                deleteBtn = `<button class="btn-delete-card" data-delete-id="${it.id}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>`;
             } else if (status === 'failed') {
                 statusBadge = `<span class="status-badge failed">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -9,7 +9,7 @@ import asyncio
 import logging
 import traceback
 from typing import Optional, Literal
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, status
 from pydantic import BaseModel, Field, HttpUrl
@@ -80,6 +80,32 @@ async def create_itinerary_indexes():
     await collection.create_index([("share_code", 1)], sparse=True)
 
 
+async def mark_timed_out_itineraries():
+    """Mark itineraries as failed if they have been generating for more than 5 minutes."""
+    collection = get_itineraries_collection()
+    timeout_threshold = datetime.utcnow() - timedelta(minutes=5)
+    
+    try:
+        result = await collection.update_many(
+            {
+                "status": "generating",
+                "created_at": {"$lt": timeout_threshold}
+            },
+            {
+                "$set": {
+                    "status": "failed",
+                    "status_message": "Generation timed out after 5 minutes",
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        if result.modified_count > 0:
+            log_debug(f"Marked {result.modified_count} itineraries as failed due to timeout", prefix="TIMEOUT")
+    except Exception as e:
+        log_error(f"Error checking for timed out itineraries: {str(e)}", prefix="TIMEOUT")
+
+
 async def process_itinerary_generation(
     itinerary_id: str,
     user_id: str,
@@ -96,6 +122,7 @@ async def process_itinerary_generation(
     2. Analyzes transcripts with Gemini AI
     3. Generates the itinerary with Google Search grounding
     4. Saves the result to MongoDB
+    5. Checks if itinerary still exists before saving
     """
     collection = get_itineraries_collection()
     
@@ -104,7 +131,19 @@ async def process_itinerary_generation(
     log_debug(f"YouTube URLs: {youtube_urls}", prefix="ITINERARY")
     log_debug(f"Destination: {destination_name or 'Not specified'}", prefix="ITINERARY")
     
+    async def check_itinerary_exists():
+        """Check if the itinerary still exists in the database"""
+        try:
+            itinerary = await collection.find_one({"_id": ObjectId(itinerary_id)})
+            return itinerary is not None
+        except Exception:
+            return False
+    
     try:
+        if not await check_itinerary_exists():
+            log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
+            return
+        
         log_step("Extracting video transcripts", 1, 4)
         await collection.update_one(
             {"_id": ObjectId(itinerary_id)},
@@ -113,8 +152,13 @@ async def process_itinerary_generation(
         
         video_results = []
         video_titles = []
+        failed_videos = []
         
         for i, url in enumerate(youtube_urls):
+            if not await check_itinerary_exists():
+                log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
+                return
+                
             try:
                 log_progress(i + 1, len(youtube_urls), f"Processing video: {url[:50]}...", prefix="TRANSCRIPT")
                 result = await youtube_service.process_video(url)
@@ -129,14 +173,30 @@ async def process_itinerary_generation(
                 )
             except YouTubeServiceError as e:
                 log_error(f"Failed to process video {url}: {str(e)}", prefix="TRANSCRIPT")
-                logger.error(f"[ITINERARY] Traceback: {traceback.format_exc()}")
-                raise Exception(f"Failed to process video {url}: {str(e)}")
+                failed_videos.append({"url": url, "error": str(e)})
+                
+                progress = 10 + ((i + 1) / len(youtube_urls)) * 30
+                await collection.update_one(
+                    {"_id": ObjectId(itinerary_id)},
+                    {"$set": {"progress": int(progress)}}
+                )
         
         if not video_results:
-            log_error("No videos could be processed", prefix="ITINERARY")
-            raise Exception("No videos could be processed")
+            if len(failed_videos) == 1:
+                error_msg = f"The video could not be processed: {failed_videos[0]['error']}. Please try with a different video or ensure the video has transcripts available."
+            else:
+                error_msg = f"None of the {len(failed_videos)} videos could be processed. Please try with different videos or ensure they have transcripts available."
+            log_error(error_msg, prefix="ITINERARY")
+            raise Exception(error_msg)
+        
+        if failed_videos:
+            log_success(f"Successfully processed {len(video_results)} out of {len(youtube_urls)} videos. {len(failed_videos)} videos were skipped due to errors.", prefix="TRANSCRIPT")
         
         log_success(f"All {len(video_results)} transcripts extracted successfully", prefix="TRANSCRIPT")
+        
+        if not await check_itinerary_exists():
+            log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
+            return
         
         log_step("Analyzing video content with Gemini AI", 2, 4)
         await collection.update_one(
@@ -150,6 +210,10 @@ async def process_itinerary_generation(
         )
         log_success(f"Gemini analysis complete. Detected destination: {analysis.destination}", prefix="GEMINI")
         
+        if not await check_itinerary_exists():
+            log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
+            return
+        
         log_step("Finalizing itinerary", 3, 4)
         await collection.update_one(
             {"_id": ObjectId(itinerary_id)},
@@ -160,6 +224,10 @@ async def process_itinerary_generation(
             final_title = f"{destination_name} Trip - {datetime.utcnow().strftime('%B %Y')}"
         else:
             final_title = title or itinerary.title or f"Trip to {analysis.destination}"
+        
+        if not await check_itinerary_exists():
+            log_error(f"Itinerary {itinerary_id} was deleted before final save. Generation completed but not saved.", prefix="ITINERARY")
+            return
         
         share_code = str(uuid.uuid4())[:8]
         
@@ -297,6 +365,8 @@ async def list_itineraries(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """List all itineraries for the current user including in-progress ones."""
+    await mark_timed_out_itineraries()
+    
     collection = get_itineraries_collection()
     
     cursor = collection.find(

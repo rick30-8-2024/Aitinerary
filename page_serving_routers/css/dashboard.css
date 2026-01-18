@@ -664,6 +664,62 @@ body {
     opacity: 1;
 }
 
+.video-status-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 4;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.video-status-badge.loading {
+    background: rgba(108, 117, 125, 0.9);
+}
+
+.video-status-badge.error {
+    background: rgba(249, 67, 70, 0.9);
+}
+
+.video-status-badge.success {
+    background: rgba(16, 185, 129, 0.9);
+}
+
+.video-status-badge.loading .spinner {
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    border-left: 1.5px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.video-status-badge.error svg {
+    color: white;
+}
+
+.video-status-badge.success svg {
+    color: white;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.video-card.loading:hover {
+    transform: translateY(-2px);
+}
+
+.video-card.error:hover {
+    transform: translateY(-2px);
+}
+
 #add-video-modal .form-group {
     margin-bottom: 16px;
 }
@@ -918,9 +974,9 @@ body {
 .itinerary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 16px;
+    row-gap: 16px;
+    column-gap: 8px;
     overflow-y: auto;
-    flex: 1;
     padding-top: 8px;
     padding-bottom: 20px;
 }
@@ -931,11 +987,10 @@ body {
     border-radius: var(--radius);
     border: 1px solid var(--card-border);
     backdrop-filter: blur(18px);
-    padding: 12px 14px;
+    padding: 10px 12px;
     cursor: pointer;
     transition: transform var(--transition), box-shadow var(--transition);
-    min-height: auto;
-    max-height: 120px;
+    min-height: 6rem;
 }
 
 .itinerary-card:hover {
@@ -991,22 +1046,24 @@ body {
     font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
     font-size: 14px;
     font-weight: 700;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
     color: rgba(11, 11, 15, 0.92);
     padding-right: 16px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
 .itinerary-card .destination {
     font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
     font-size: 12px;
     color: var(--muted);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
 .itinerary-card .meta {
@@ -1015,6 +1072,7 @@ body {
     font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
     font-size: 10px;
     color: var(--muted-2);
+    line-height: 1.2;
 }
 
 .itinerary-card .meta span {
