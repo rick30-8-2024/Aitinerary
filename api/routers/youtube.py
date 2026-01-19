@@ -12,6 +12,7 @@ from services.youtube_service import (
     InvalidURLError,
     VideoNotFoundError,
     TranscriptNotAvailableError,
+    ProxyError,
     YouTubeServiceError,
     VideoMetadata,
     TranscriptResult,
@@ -182,6 +183,11 @@ async def process_single_video(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
+    except ProxyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e)
+        )
     except YouTubeServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -213,3 +219,16 @@ async def get_video_metadata(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+@router.get("/proxy-stats")
+async def get_proxy_stats(
+    current_user: UserInDB = Depends(get_current_user)
+) -> dict:
+    """
+    Get current proxy pool statistics for monitoring.
+    
+    Returns information about available proxies, their health status,
+    and recent success/failure rates.
+    """
+    return youtube_service.get_proxy_stats()
