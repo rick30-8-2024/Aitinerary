@@ -693,14 +693,14 @@ IMPORTANT:
             
             budget_data = data.get("budget_breakdown", {})
             budget_breakdown = BudgetBreakdown(
-                food=budget_data.get("food", 0),
-                activities=budget_data.get("activities", 0),
-                transportation=budget_data.get("transportation", 0),
-                shopping=budget_data.get("shopping", 0),
-                miscellaneous=budget_data.get("miscellaneous", 0),
-                subtotal_without_accommodation=budget_data.get("subtotal_without_accommodation", 0),
-                accommodation_budget=budget_data.get("accommodation_budget", 0),
-                total=budget_data.get("total", data.get("total_budget_estimate", 0))
+                food=max(0, budget_data.get("food", 0)),
+                activities=max(0, budget_data.get("activities", 0)),
+                transportation=max(0, budget_data.get("transportation", 0)),
+                shopping=max(0, budget_data.get("shopping", 0)),
+                miscellaneous=max(0, budget_data.get("miscellaneous", 0)),
+                subtotal_without_accommodation=max(0, budget_data.get("subtotal_without_accommodation", 0)),
+                accommodation_budget=max(0, budget_data.get("accommodation_budget", 0)),
+                total=max(0, budget_data.get("total", data.get("total_budget_estimate", 0)))
             )
             
             return Itinerary(
