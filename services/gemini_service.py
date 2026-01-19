@@ -1,7 +1,7 @@
 """
 Gemini AI Integration Service
 
-Provides functionality to analyze YouTube transcripts and generate travel itineraries
+Provides functionality to analyze YouTube videos and generate travel itineraries
 using Google's Gemini model with a dual-agent architecture:
 - Internet Search Agent: Has Google Search grounding for real-time information
 - Tool Call Agent: Generates structured JSON responses and can call the search agent
@@ -26,7 +26,7 @@ from models.itinerary import (
     MealRecommendation,
     BudgetBreakdown
 )
-from services.youtube_service import VideoProcessingResult
+from services.youtube_video_service import VideoTravelInfo, MultiVideoTravelInfo
 
 
 class GeminiServiceError(Exception):
@@ -512,42 +512,112 @@ IMPORTANT:
         except Exception as e:
             raise GenerationError(f"Transcript analysis failed: {str(e)}")
     
-    async def analyze_multiple_transcripts(
+    def convert_video_info_to_analysis(
         self,
-        video_results: list[VideoProcessingResult]
+        video_info: VideoTravelInfo
     ) -> TranscriptAnalysis:
         """
-        Analyze multiple video transcripts and combine the results.
+        Convert VideoTravelInfo from the new video service to TranscriptAnalysis format.
         
         Args:
-            video_results: List of processed video results
+            video_info: VideoTravelInfo from youtube_video_service
+            
+        Returns:
+            TranscriptAnalysis compatible with itinerary generation
+        """
+        places_mentioned = [place.name for place in video_info.places]
+        if video_info.hidden_gems:
+            places_mentioned.extend([gem.name for gem in video_info.hidden_gems])
+        if video_info.food_recommendations:
+            places_mentioned.extend([f"{food.name} ({food.location})" if food.location else food.name
+                                    for food in video_info.food_recommendations])
+        
+        activities_mentioned = [act.name for act in video_info.activities]
+        
+        local_tips = [tip.tip for tip in video_info.travel_tips]
+        
+        warnings = [tip.tip for tip in video_info.travel_tips
+                   if tip.category in ("safety", "scam", "warning", "caution")]
+        
+        estimated_costs = {}
+        for act in video_info.activities:
+            if act.cost:
+                estimated_costs[act.name] = act.cost
+        for food in video_info.food_recommendations:
+            if food.price_range:
+                estimated_costs[food.name] = food.price_range
+        
+        key_highlights = []
+        key_highlights.extend([place.name for place in video_info.places[:5]])
+        key_highlights.extend([gem.name for gem in video_info.hidden_gems[:3]])
+        key_highlights.extend([act.name for act in video_info.activities[:5]])
+        
+        return TranscriptAnalysis(
+            destination=video_info.destination,
+            places_mentioned=places_mentioned,
+            activities_mentioned=activities_mentioned,
+            local_tips=local_tips,
+            warnings=warnings,
+            estimated_costs=estimated_costs,
+            best_time_to_visit=video_info.best_time_to_visit,
+            key_highlights=key_highlights[:10]
+        )
+    
+    def convert_multi_video_info_to_analysis(
+        self,
+        multi_video_info: MultiVideoTravelInfo
+    ) -> TranscriptAnalysis:
+        """
+        Convert MultiVideoTravelInfo to TranscriptAnalysis format.
+        
+        Args:
+            multi_video_info: MultiVideoTravelInfo from multiple videos
             
         Returns:
             Combined TranscriptAnalysis
         """
-        if not video_results:
-            raise ValueError("At least one video result is required")
+        places_mentioned = [place.name for place in multi_video_info.all_places]
+        if multi_video_info.all_hidden_gems:
+            places_mentioned.extend([gem.name for gem in multi_video_info.all_hidden_gems])
+        if multi_video_info.all_food_recommendations:
+            places_mentioned.extend([f"{food.name} ({food.location})" if food.location else food.name
+                                    for food in multi_video_info.all_food_recommendations])
         
-        if len(video_results) == 1:
-            result = video_results[0]
-            return await self.analyze_transcript(
-                result.transcript.full_text,
-                result.metadata.title,
-                result.metadata.author_name
-            )
+        activities_mentioned = [act.name for act in multi_video_info.all_activities]
         
-        combined_transcript = "\n\n---VIDEO BREAK---\n\n".join(
-            f"[{r.metadata.title}]\n{r.transcript.full_text[:15000]}"
-            for r in video_results
-        )
+        local_tips = [tip.tip for tip in multi_video_info.all_travel_tips]
         
-        combined_title = " + ".join(r.metadata.title for r in video_results)
-        combined_author = ", ".join(set(r.metadata.author_name for r in video_results))
+        warnings = [tip.tip for tip in multi_video_info.all_travel_tips
+                   if tip.category in ("safety", "scam", "warning", "caution")]
         
-        return await self.analyze_transcript(
-            combined_transcript,
-            combined_title,
-            combined_author
+        estimated_costs = {}
+        for act in multi_video_info.all_activities:
+            if act.cost:
+                estimated_costs[act.name] = act.cost
+        for food in multi_video_info.all_food_recommendations:
+            if food.price_range:
+                estimated_costs[food.name] = food.price_range
+        
+        best_time = None
+        for video_info in multi_video_info.videos:
+            if video_info.best_time_to_visit:
+                best_time = video_info.best_time_to_visit
+                break
+        
+        key_highlights = []
+        key_highlights.extend([place.name for place in multi_video_info.all_places[:5]])
+        key_highlights.extend([gem.name for gem in multi_video_info.all_hidden_gems[:3]])
+        key_highlights.extend([act.name for act in multi_video_info.all_activities[:5]])
+        
+        return TranscriptAnalysis(
+            destination=multi_video_info.combined_destination,
+            places_mentioned=places_mentioned,
+            activities_mentioned=activities_mentioned,
+            local_tips=local_tips,
+            warnings=warnings,
+            estimated_costs=estimated_costs,
+            best_time_to_visit=best_time,
+            key_highlights=key_highlights[:10]
         )
     
     def _extract_json_from_response(self, text: str) -> dict:
@@ -656,24 +726,51 @@ IMPORTANT:
         except Exception as e:
             raise GenerationError(f"Itinerary generation failed: {str(e)}")
     
-    async def generate_itinerary_from_videos(
+    async def generate_itinerary_from_video_info(
         self,
-        video_results: list[VideoProcessingResult],
+        video_info: VideoTravelInfo,
         preferences: UserPreferences
     ) -> tuple[TranscriptAnalysis, Itinerary]:
         """
-        Complete pipeline: analyze videos and generate itinerary.
+        Generate itinerary from a single VideoTravelInfo.
         
         Args:
-            video_results: Processed video results
+            video_info: VideoTravelInfo from youtube_video_service
             preferences: User travel preferences
             
         Returns:
             Tuple of (TranscriptAnalysis, Itinerary)
         """
-        analysis = await self.analyze_multiple_transcripts(video_results)
+        analysis = self.convert_video_info_to_analysis(video_info)
         
-        video_titles = [r.metadata.title for r in video_results]
+        video_titles = [video_info.video_title or video_info.video_url]
+        
+        itinerary = await self.generate_itinerary(
+            analysis, preferences, video_titles
+        )
+        
+        return analysis, itinerary
+    
+    async def generate_itinerary_from_multi_video_info(
+        self,
+        multi_video_info: MultiVideoTravelInfo,
+        preferences: UserPreferences
+    ) -> tuple[TranscriptAnalysis, Itinerary]:
+        """
+        Generate itinerary from MultiVideoTravelInfo.
+        
+        Args:
+            multi_video_info: MultiVideoTravelInfo from multiple videos
+            preferences: User travel preferences
+            
+        Returns:
+            Tuple of (TranscriptAnalysis, Itinerary)
+        """
+        analysis = self.convert_multi_video_info_to_analysis(multi_video_info)
+        
+        video_titles = []
+        for video_info in multi_video_info.videos:
+            video_titles.append(video_info.video_title or video_info.video_url)
         
         itinerary = await self.generate_itinerary(
             analysis, preferences, video_titles

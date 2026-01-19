@@ -1,22 +1,26 @@
 """
 YouTube API Router
 
-Provides endpoints for YouTube video validation and transcript extraction.
+Provides endpoints for YouTube video validation and travel information extraction.
+Uses Gemini's native video processing capability for analyzing travel content.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status
-from pydantic import BaseModel, HttpUrl, field_validator
+from pydantic import BaseModel, field_validator
+from typing import Optional
 
-from services.youtube_service import (
-    youtube_service,
+from services.youtube_video_service import (
+    youtube_video_service,
     InvalidURLError,
-    VideoNotFoundError,
-    TranscriptNotAvailableError,
-    ProxyError,
-    YouTubeServiceError,
-    VideoMetadata,
-    TranscriptResult,
-    VideoProcessingResult
+    VideoProcessingError,
+    YouTubeVideoServiceError,
+    VideoTravelInfo,
+    MultiVideoTravelInfo,
+    Place,
+    Activity,
+    HiddenGem,
+    FoodRecommendation,
+    TravelTip
 )
 from api.dependencies import get_current_user
 from models.user import UserInDB
@@ -33,16 +37,14 @@ class URLValidateRequest(BaseModel):
 class URLValidateResponse(BaseModel):
     """Response schema for URL validation."""
     valid: bool
-    video_id: str | None = None
-    title: str | None = None
-    author: str | None = None
-    error: str | None = None
+    video_id: Optional[str] = None
+    normalized_url: Optional[str] = None
+    error: Optional[str] = None
 
 
-class TranscriptRequest(BaseModel):
-    """Request schema for transcript extraction."""
+class TravelInfoRequest(BaseModel):
+    """Request schema for travel info extraction."""
     urls: list[str]
-    languages: list[str] = ["en"]
     
     @field_validator("urls")
     @classmethod
@@ -54,27 +56,56 @@ class TranscriptRequest(BaseModel):
         return v
 
 
-class TranscriptResponse(BaseModel):
-    """Response schema for transcript extraction."""
+class TravelInfoResponse(BaseModel):
+    """Response schema for travel info extraction."""
     success: bool
-    results: dict
-    total_videos: int
-    successful_count: int
-    failed_count: int
+    destination: str
+    summary: str
+    places: list[Place]
+    activities: list[Activity]
+    hidden_gems: list[HiddenGem]
+    food_recommendations: list[FoodRecommendation]
+    travel_tips: list[TravelTip]
+    best_time_to_visit: Optional[str] = None
+    budget_info: Optional[str] = None
+    duration_suggested: Optional[str] = None
+
+
+class MultiVideoTravelInfoResponse(BaseModel):
+    """Response schema for multi-video travel info extraction."""
+    success: bool
+    video_count: int
+    combined_destination: str
+    videos: list[VideoTravelInfo]
+    all_places: list[Place]
+    all_activities: list[Activity]
+    all_hidden_gems: list[HiddenGem]
+    all_food_recommendations: list[FoodRecommendation]
+    all_travel_tips: list[TravelTip]
 
 
 class SingleVideoRequest(BaseModel):
     """Request schema for single video processing."""
     url: str
-    languages: list[str] = ["en"]
 
 
-class SingleVideoResponse(BaseModel):
-    """Response schema for single video processing."""
+class TranscriptRequest(BaseModel):
+    """Request schema for transcript extraction."""
+    url: str
+
+
+class TranscriptResponse(BaseModel):
+    """Response schema for transcript extraction."""
     success: bool
-    video_id: str
-    metadata: VideoMetadata
-    transcript: TranscriptResult
+    video_url: str
+    transcript: str
+
+
+class SummaryResponse(BaseModel):
+    """Response schema for video summary."""
+    success: bool
+    video_url: str
+    summary: str
 
 
 @router.post("/validate", response_model=URLValidateResponse)
@@ -83,89 +114,58 @@ async def validate_youtube_url(
     current_user: UserInDB = Depends(get_current_user)
 ) -> URLValidateResponse:
     """
-    Validate a YouTube URL and return basic video information.
+    Validate a YouTube URL and return normalized URL.
     
     - **url**: YouTube video URL to validate
     
-    Returns video ID, title, and author if valid.
-    """
-    result = await youtube_service.validate_url(request.url)
-    
-    return URLValidateResponse(
-        valid=result.get("valid", False),
-        video_id=result.get("video_id"),
-        title=result.get("title"),
-        author=result.get("author"),
-        error=result.get("error")
-    )
-
-
-@router.post("/transcript", response_model=TranscriptResponse)
-async def extract_transcripts(
-    request: TranscriptRequest,
-    current_user: UserInDB = Depends(get_current_user)
-) -> TranscriptResponse:
-    """
-    Extract transcripts from multiple YouTube videos.
-    
-    - **urls**: List of YouTube video URLs (max 5)
-    - **languages**: Preferred languages for transcripts (default: ["en"])
-    
-    Returns transcripts and metadata for each video.
-    """
-    results = await youtube_service.process_multiple_videos(
-        request.urls, 
-        request.languages
-    )
-    
-    successful = sum(1 for r in results.values() if isinstance(r, VideoProcessingResult))
-    failed = len(results) - successful
-    
-    serialized_results = {}
-    for url, result in results.items():
-        if isinstance(result, VideoProcessingResult):
-            serialized_results[url] = {
-                "success": True,
-                "metadata": result.metadata.model_dump(),
-                "transcript": result.transcript.model_dump()
-            }
-        else:
-            serialized_results[url] = {
-                "success": False,
-                "error": result.get("error"),
-                "error_type": result.get("error_type")
-            }
-    
-    return TranscriptResponse(
-        success=successful > 0,
-        results=serialized_results,
-        total_videos=len(results),
-        successful_count=successful,
-        failed_count=failed
-    )
-
-
-@router.post("/process", response_model=SingleVideoResponse)
-async def process_single_video(
-    request: SingleVideoRequest,
-    current_user: UserInDB = Depends(get_current_user)
-) -> SingleVideoResponse:
-    """
-    Process a single YouTube video to extract metadata and transcript.
-    
-    - **url**: YouTube video URL
-    - **languages**: Preferred languages for transcript (default: ["en"])
-    
-    Returns complete metadata and transcript for the video.
+    Returns normalized URL if valid.
     """
     try:
-        result = await youtube_service.process_video(request.url, request.languages)
+        normalized_url = youtube_video_service._validate_youtube_url(request.url)
+        video_id = normalized_url.split("v=")[-1]
         
-        return SingleVideoResponse(
+        return URLValidateResponse(
+            valid=True,
+            video_id=video_id,
+            normalized_url=normalized_url,
+            error=None
+        )
+    except InvalidURLError as e:
+        return URLValidateResponse(
+            valid=False,
+            video_id=None,
+            normalized_url=None,
+            error=str(e)
+        )
+
+
+@router.post("/travel-info", response_model=TravelInfoResponse)
+async def extract_travel_info(
+    request: SingleVideoRequest,
+    current_user: UserInDB = Depends(get_current_user)
+) -> TravelInfoResponse:
+    """
+    Extract travel information from a single YouTube video.
+    
+    - **url**: YouTube video URL
+    
+    Returns detailed travel information extracted from the video.
+    """
+    try:
+        result = await youtube_video_service.extract_travel_info(request.url)
+        
+        return TravelInfoResponse(
             success=True,
-            video_id=result.metadata.video_id,
-            metadata=result.metadata,
-            transcript=result.transcript
+            destination=result.destination,
+            summary=result.summary,
+            places=result.places,
+            activities=result.activities,
+            hidden_gems=result.hidden_gems,
+            food_recommendations=result.food_recommendations,
+            travel_tips=result.travel_tips,
+            best_time_to_visit=result.best_time_to_visit,
+            budget_info=result.budget_info,
+            duration_suggested=result.duration_suggested
         )
         
     except InvalidURLError as e:
@@ -173,62 +173,128 @@ async def process_single_video(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    except VideoNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
-    except TranscriptNotAvailableError as e:
+    except VideoProcessingError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
-    except ProxyError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e)
-        )
-    except YouTubeServiceError as e:
+    except YouTubeVideoServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
 
-@router.get("/metadata/{video_id}")
-async def get_video_metadata(
-    video_id: str,
+@router.post("/travel-info/multiple", response_model=MultiVideoTravelInfoResponse)
+async def extract_multiple_travel_info(
+    request: TravelInfoRequest,
     current_user: UserInDB = Depends(get_current_user)
-) -> VideoMetadata:
+) -> MultiVideoTravelInfoResponse:
     """
-    Get metadata for a YouTube video by ID.
+    Extract travel information from multiple YouTube videos.
     
-    - **video_id**: 11-character YouTube video ID
+    - **urls**: List of YouTube video URLs (max 5)
     
-    Returns video title, author, and thumbnail URL.
+    Returns combined travel information from all videos.
     """
     try:
-        return await youtube_service.get_video_metadata(video_id)
-    except VideoNotFoundError as e:
+        result = await youtube_video_service.extract_travel_info_from_multiple(request.urls)
+        
+        return MultiVideoTravelInfoResponse(
+            success=True,
+            video_count=len(result.videos),
+            combined_destination=result.combined_destination,
+            videos=result.videos,
+            all_places=result.all_places,
+            all_activities=result.all_activities,
+            all_hidden_gems=result.all_hidden_gems,
+            all_food_recommendations=result.all_food_recommendations,
+            all_travel_tips=result.all_travel_tips
+        )
+        
+    except InvalidURLError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    except YouTubeServiceError as e:
+    except YouTubeVideoServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
 
-@router.get("/proxy-stats")
-async def get_proxy_stats(
+@router.post("/transcript", response_model=TranscriptResponse)
+async def extract_transcript(
+    request: TranscriptRequest,
     current_user: UserInDB = Depends(get_current_user)
-) -> dict:
+) -> TranscriptResponse:
     """
-    Get current proxy pool statistics for monitoring.
+    Extract transcript from a YouTube video using Gemini.
     
-    Returns information about available proxies, their health status,
-    and recent success/failure rates.
+    - **url**: YouTube video URL
+    
+    Returns the video transcript.
     """
-    return youtube_service.get_proxy_stats()
+    try:
+        transcript = await youtube_video_service.get_transcript(request.url)
+        
+        return TranscriptResponse(
+            success=True,
+            video_url=request.url,
+            transcript=transcript
+        )
+        
+    except InvalidURLError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except VideoProcessingError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+    except YouTubeVideoServiceError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/summarize", response_model=SummaryResponse)
+async def summarize_video(
+    request: SingleVideoRequest,
+    current_user: UserInDB = Depends(get_current_user)
+) -> SummaryResponse:
+    """
+    Get a summary of a YouTube video.
+    
+    - **url**: YouTube video URL
+    
+    Returns a comprehensive summary of the video content.
+    """
+    try:
+        summary = await youtube_video_service.summarize_video(request.url)
+        
+        return SummaryResponse(
+            success=True,
+            video_url=request.url,
+            summary=summary
+        )
+        
+    except InvalidURLError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except VideoProcessingError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+    except YouTubeVideoServiceError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )

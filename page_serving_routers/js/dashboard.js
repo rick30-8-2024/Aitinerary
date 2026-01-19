@@ -414,7 +414,7 @@
         const addBtn = document.getElementById('add-video-btn');
         
         addBtn.addEventListener('click', () => {
-            if (videoUrls.length >= MAX_VIDEOS) return;
+            if (videoData.length >= MAX_VIDEOS) return;
             document.getElementById('add-video-modal').classList.add('show');
             document.getElementById('video-url-input').focus();
         });
@@ -506,7 +506,7 @@
                 renderVideoCards();
                 closeAddVideoModal();
 
-                fetchVideoTranscript(videoEntry);
+                validateVideo(videoEntry);
 
             } catch (err) {
                 console.error('Error adding video:', err);
@@ -544,33 +544,36 @@
         return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
     }
 
-    async function fetchVideoTranscript(videoEntry) {
+    async function validateVideo(videoEntry) {
         try {
-            const response = await fetch(`${API_BASE}/api/youtube/process`, {
+            const response = await fetch(`${API_BASE}/api/youtube/validate`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    url: videoEntry.url,
-                    languages: ['en']
+                    url: videoEntry.url
                 })
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.detail || 'Failed to process video');
+                throw new Error(errorData.detail || 'Failed to validate video');
             }
 
             const data = await response.json();
+            
+            if (!data.valid) {
+                throw new Error(data.error || 'Invalid video URL');
+            }
+            
             videoEntry.status = 'completed';
-            videoEntry.title = data.metadata.title;
-            videoEntry.transcript = data.transcript;
-            videoEntry.metadata = data.metadata;
+            videoEntry.videoId = data.video_id;
+            videoEntry.normalizedUrl = data.normalized_url;
             
         } catch (error) {
-            console.error('Error fetching transcript:', error);
+            console.error('Error validating video:', error);
             videoEntry.status = 'error';
             videoEntry.error = error.message;
         }

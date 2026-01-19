@@ -11,7 +11,7 @@ import traceback
 from typing import Optional, Literal
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, status
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field, HttpUrl
 from bson import ObjectId
 
@@ -29,7 +29,7 @@ from models.itinerary import (
     ItineraryListItem,
     TranscriptAnalysis,
 )
-from services.youtube_service import youtube_service, YouTubeServiceError
+from services.youtube_video_service import youtube_video_service, YouTubeVideoServiceError
 from services.gemini_service import gemini_service, GeminiServiceError
 
 
@@ -144,71 +144,59 @@ async def process_itinerary_generation(
             log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
             return
         
-        log_step("Extracting video transcripts", 1, 4)
+        log_step("Analyzing YouTube videos with Gemini AI", 1, 4)
         await collection.update_one(
             {"_id": ObjectId(itinerary_id)},
-            {"$set": {"progress": 10, "status_message": "Extracting video transcripts..."}}
+            {"$set": {"progress": 10, "status_message": "Analyzing YouTube videos..."}}
         )
         
-        video_results = []
         video_titles = []
-        failed_videos = []
         
-        for i, url in enumerate(youtube_urls):
-            if not await check_itinerary_exists():
-                log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
-                return
+        try:
+            log_debug(f"Processing {len(youtube_urls)} videos with Gemini native video processing", prefix="VIDEO")
+            
+            if len(youtube_urls) == 1:
+                video_info = await youtube_video_service.extract_travel_info(youtube_urls[0])
+                video_titles = [video_info.video_title or video_info.video_url]
+                log_success(f"Extracted travel info from video: {video_info.destination}", prefix="VIDEO")
                 
-            try:
-                log_progress(i + 1, len(youtube_urls), f"Processing video: {url[:50]}...", prefix="TRANSCRIPT")
-                result = await youtube_service.process_video(url)
-                video_results.append(result)
-                video_titles.append(result.metadata.title)
-                log_success(f"Extracted transcript: {result.metadata.title}", prefix="TRANSCRIPT")
-                
-                progress = 10 + ((i + 1) / len(youtube_urls)) * 30
                 await collection.update_one(
                     {"_id": ObjectId(itinerary_id)},
-                    {"$set": {"progress": int(progress)}}
+                    {"$set": {"progress": 40, "status_message": "Generating itinerary..."}}
                 )
-            except YouTubeServiceError as e:
-                log_error(f"Failed to process video {url}: {str(e)}", prefix="TRANSCRIPT")
-                failed_videos.append({"url": url, "error": str(e)})
                 
-                progress = 10 + ((i + 1) / len(youtube_urls)) * 30
-                await collection.update_one(
-                    {"_id": ObjectId(itinerary_id)},
-                    {"$set": {"progress": int(progress)}}
+                if not await check_itinerary_exists():
+                    log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
+                    return
+                
+                analysis, itinerary = await gemini_service.generate_itinerary_from_video_info(
+                    video_info, preferences
                 )
-        
-        if not video_results:
-            if len(failed_videos) == 1:
-                error_msg = f"The video could not be processed: {failed_videos[0]['error']}. Please try with a different video or ensure the video has transcripts available."
             else:
-                error_msg = f"None of the {len(failed_videos)} videos could be processed. Please try with different videos or ensure they have transcripts available."
-            log_error(error_msg, prefix="ITINERARY")
+                multi_video_info = await youtube_video_service.extract_travel_info_from_multiple(youtube_urls)
+                for video_info in multi_video_info.videos:
+                    video_titles.append(video_info.video_title or video_info.video_url)
+                log_success(f"Extracted travel info from {len(youtube_urls)} videos: {multi_video_info.combined_destination}", prefix="VIDEO")
+                
+                await collection.update_one(
+                    {"_id": ObjectId(itinerary_id)},
+                    {"$set": {"progress": 40, "status_message": "Generating itinerary..."}}
+                )
+                
+                if not await check_itinerary_exists():
+                    log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
+                    return
+                
+                analysis, itinerary = await gemini_service.generate_itinerary_from_multi_video_info(
+                    multi_video_info, preferences
+                )
+            
+            log_success(f"Gemini analysis complete. Detected destination: {analysis.destination}", prefix="GEMINI")
+            
+        except YouTubeVideoServiceError as e:
+            error_msg = f"Failed to process videos: {str(e)}. Please try with different videos."
+            log_error(error_msg, prefix="VIDEO")
             raise Exception(error_msg)
-        
-        if failed_videos:
-            log_success(f"Successfully processed {len(video_results)} out of {len(youtube_urls)} videos. {len(failed_videos)} videos were skipped due to errors.", prefix="TRANSCRIPT")
-        
-        log_success(f"All {len(video_results)} transcripts extracted successfully", prefix="TRANSCRIPT")
-        
-        if not await check_itinerary_exists():
-            log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
-            return
-        
-        log_step("Analyzing video content with Gemini AI", 2, 4)
-        await collection.update_one(
-            {"_id": ObjectId(itinerary_id)},
-            {"$set": {"progress": 50, "status_message": "Analyzing video content..."}}
-        )
-        
-        log_debug(f"Sending {len(video_results)} transcripts to Gemini for analysis", prefix="GEMINI")
-        analysis, itinerary = await gemini_service.generate_itinerary_from_videos(
-            video_results, preferences
-        )
-        log_success(f"Gemini analysis complete. Detected destination: {analysis.destination}", prefix="GEMINI")
         
         if not await check_itinerary_exists():
             log_error(f"Itinerary {itinerary_id} was deleted during processing. Stopping generation.", prefix="ITINERARY")
@@ -272,13 +260,13 @@ async def process_itinerary_generation(
 @router.post("/generate", response_model=GenerateResponse, status_code=status.HTTP_202_ACCEPTED)
 async def generate_itinerary(
     request: GenerateRequest,
-    background_tasks: BackgroundTasks,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Start asynchronous itinerary generation from YouTube videos.
     
     Returns immediately with an itinerary ID for status polling.
+    Uses asyncio.create_task for true concurrent processing.
     """
     log_debug(f"Received generation request from user_id={current_user.id}", prefix="GENERATE")
     log_debug(f"YouTube URLs: {request.youtube_urls}", prefix="GENERATE")
@@ -313,16 +301,17 @@ async def generate_itinerary(
     itinerary_id = str(result.inserted_id)
     log_success(f"Created itinerary record with id={itinerary_id}", prefix="GENERATE")
     
-    background_tasks.add_task(
-        process_itinerary_generation,
-        itinerary_id,
-        current_user.id,
-        request.youtube_urls,
-        request.preferences,
-        request.title,
-        request.destination_name
+    asyncio.create_task(
+        process_itinerary_generation(
+            itinerary_id,
+            current_user.id,
+            request.youtube_urls,
+            request.preferences,
+            request.title,
+            request.destination_name
+        )
     )
-    logger.info(f"[GENERATE] Background task queued for itinerary_id={itinerary_id}")
+    logger.info(f"[GENERATE] Background task started immediately for itinerary_id={itinerary_id}")
     
     return GenerateResponse(
         itinerary_id=itinerary_id,

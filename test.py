@@ -1,154 +1,229 @@
 """
-Test script for Google Generative AI (google.generativeai) library.
-Tests the Gemini 3 Pro Preview model with various prompts.
+Test script for YouTube Video Service using Google GenAI.
+Tests travel information extraction from YouTube videos.
 """
 
-import os
-from dotenv import load_dotenv
-import google.generativeai as genai
+import asyncio
+import json
 
 
-def load_api_key():
-    """Load the GEMINI_API_KEY from the .env file."""
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in .env file")
-    return api_key
-
-
-def configure_genai(api_key: str):
-    """Configure the Google Generative AI library with the API key."""
-    genai.configure(api_key=api_key)
-
-
-def test_simple_text_generation():
-    """Test simple text generation with Gemini 3 Pro Preview."""
-    print("\n" + "=" * 50)
-    print("Test 1: Simple Text Generation")
-    print("=" * 50)
+async def test_single_video_extraction():
+    """Test extracting travel information from a single video."""
+    print("\n" + "=" * 60)
+    print("Test 1: Single Video - Travel Information Extraction")
+    print("=" * 60)
     
-    model = genai.GenerativeModel("gemini-3-pro-preview")
-    response = model.generate_content("What is the capital of France?")
+    from services.youtube_video_service import youtube_video_service
     
-    print(f"Prompt: What is the capital of France?")
-    print(f"Response: {response.text}")
-    return True
-
-
-def test_creative_writing():
-    """Test creative writing capabilities."""
-    print("\n" + "=" * 50)
-    print("Test 2: Creative Writing")
-    print("=" * 50)
+    youtube_url = "https://www.youtube.com/watch?v=6igdCnYjBt4"
     
-    model = genai.GenerativeModel("gemini-3-pro-preview")
-    response = model.generate_content(
-        "Write a short haiku about programming."
-    )
-    
-    print(f"Prompt: Write a short haiku about programming.")
-    print(f"Response:\n{response.text}")
-    return True
-
-
-def test_code_generation():
-    """Test code generation capabilities."""
-    print("\n" + "=" * 50)
-    print("Test 3: Code Generation")
-    print("=" * 50)
-    
-    model = genai.GenerativeModel("gemini-3-pro-preview")
-    response = model.generate_content(
-        "Write a Python function that calculates the factorial of a number."
-    )
-    
-    print(f"Prompt: Write a Python function that calculates the factorial of a number.")
-    print(f"Response:\n{response.text}")
-    return True
-
-
-def test_conversation():
-    """Test multi-turn conversation using chat."""
-    print("\n" + "=" * 50)
-    print("Test 4: Multi-turn Conversation")
-    print("=" * 50)
-    
-    model = genai.GenerativeModel("gemini-3-pro-preview")
-    chat = model.start_chat(history=[])
-    
-    response1 = chat.send_message("Hello! My name is John.")
-    print(f"User: Hello! My name is John.")
-    print(f"Model: {response1.text}")
-    
-    response2 = chat.send_message("What is my name?")
-    print(f"\nUser: What is my name?")
-    print(f"Model: {response2.text}")
-    return True
-
-
-def test_with_generation_config():
-    """Test text generation with custom configuration."""
-    print("\n" + "=" * 50)
-    print("Test 5: Custom Generation Config")
-    print("=" * 50)
-    
-    model = genai.GenerativeModel("gemini-3-pro-preview")
-    
-    generation_config = genai.GenerationConfig(
-        temperature=0.7,
-        top_p=0.9,
-        top_k=40,
-        max_output_tokens=256,
-    )
-    
-    response = model.generate_content(
-        "Explain quantum computing in one sentence.",
-        generation_config=generation_config
-    )
-    
-    print(f"Prompt: Explain quantum computing in one sentence.")
-    print(f"Temperature: 0.7, Top-P: 0.9, Top-K: 40")
-    print(f"Response: {response.text}")
-    return True
-
-
-def test_list_models():
-    """List available models."""
-    print("\n" + "=" * 50)
-    print("Test 6: List Available Models")
-    print("=" * 50)
-    
-    models = genai.list_models()
-    print("Available Gemini models:")
-    for model in models:
-        if "gemini" in model.name.lower():
-            print(f"  - {model.name}")
-    return True
-
-
-def main():
-    """Main function to run all tests."""
-    print("=" * 50)
-    print("Google Generative AI Library Test")
-    print("Model: gemini-3-pro-preview")
-    print("=" * 50)
+    print(f"\nYouTube URL: {youtube_url}")
+    print("\nExtracting travel information...")
     
     try:
-        api_key = load_api_key()
-        configure_genai(api_key)
-        print("✓ API Key loaded and configured successfully")
-    except ValueError as e:
-        print(f"✗ Error: {e}")
+        travel_info = await youtube_video_service.extract_travel_info(youtube_url)
+        
+        print(f"\n{'=' * 40}")
+        print("EXTRACTED TRAVEL INFORMATION")
+        print(f"{'=' * 40}")
+        
+        print(f"\n📍 Destination: {travel_info.destination}")
+        print(f"\n📝 Summary: {travel_info.summary}")
+        
+        if travel_info.places:
+            print(f"\n🏛️ Places to Visit ({len(travel_info.places)}):")
+            for place in travel_info.places[:10]:
+                print(f"   - {place.name} ({place.category})")
+                if place.description:
+                    print(f"     {place.description[:100]}...")
+        
+        if travel_info.activities:
+            print(f"\n🎯 Activities ({len(travel_info.activities)}):")
+            for activity in travel_info.activities[:10]:
+                print(f"   - {activity.name}")
+                if activity.tips:
+                    print(f"     Tip: {activity.tips[:100]}...")
+        
+        if travel_info.hidden_gems:
+            print(f"\n💎 Hidden Gems ({len(travel_info.hidden_gems)}):")
+            for gem in travel_info.hidden_gems[:5]:
+                print(f"   - {gem.name}: {gem.why_special[:100]}...")
+        
+        if travel_info.food_recommendations:
+            print(f"\n🍽️ Food Recommendations ({len(travel_info.food_recommendations)}):")
+            for food in travel_info.food_recommendations[:5]:
+                print(f"   - {food.name}")
+                if food.location:
+                    print(f"     Location: {food.location}")
+        
+        if travel_info.travel_tips:
+            print(f"\n💡 Travel Tips ({len(travel_info.travel_tips)}):")
+            for tip in travel_info.travel_tips[:5]:
+                print(f"   - [{tip.category}] {tip.tip[:100]}...")
+        
+        if travel_info.best_time_to_visit:
+            print(f"\n📅 Best Time to Visit: {travel_info.best_time_to_visit}")
+        
+        if travel_info.budget_info:
+            print(f"\n💰 Budget Info: {travel_info.budget_info}")
+        
+        if travel_info.duration_suggested:
+            print(f"\n⏱️ Suggested Duration: {travel_info.duration_suggested}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\nError: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def test_video_transcript():
+    """Test getting transcript from a video."""
+    print("\n" + "=" * 60)
+    print("Test 2: Video Transcript Extraction")
+    print("=" * 60)
+    
+    from services.youtube_video_service import youtube_video_service
+    
+    youtube_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+    
+    print(f"\nYouTube URL: {youtube_url}")
+    print("(First YouTube video - 'Me at the zoo')")
+    print("\nExtracting transcript...")
+    
+    try:
+        transcript = await youtube_video_service.get_transcript(youtube_url)
+        print(f"\nTranscript:\n{transcript}")
+        return True
+        
+    except Exception as e:
+        print(f"\nError: {e}")
+        return False
+
+
+async def test_video_summary():
+    """Test getting summary from a video."""
+    print("\n" + "=" * 60)
+    print("Test 3: Video Summary")
+    print("=" * 60)
+    
+    from services.youtube_video_service import youtube_video_service
+    
+    youtube_url = "https://www.youtube.com/watch?v=6igdCnYjBt4"
+    
+    print(f"\nYouTube URL: {youtube_url}")
+    print("\nGetting video summary...")
+    
+    try:
+        summary = await youtube_video_service.summarize_video(youtube_url)
+        print(f"\nSummary:\n{summary}")
+        return True
+        
+    except Exception as e:
+        print(f"\nError: {e}")
+        return False
+
+
+async def test_multiple_videos():
+    """Test extracting travel info from multiple videos."""
+    print("\n" + "=" * 60)
+    print("Test 4: Multiple Videos Processing")
+    print("=" * 60)
+    
+    from services.youtube_video_service import youtube_video_service
+    
+    youtube_urls = [
+        "https://www.youtube.com/watch?v=6igdCnYjBt4",
+        "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    ]
+    
+    print(f"\nProcessing {len(youtube_urls)} videos...")
+    for url in youtube_urls:
+        print(f"  - {url}")
+    
+    try:
+        multi_info = await youtube_video_service.extract_travel_info_from_multiple(youtube_urls)
+        
+        print(f"\n{'=' * 40}")
+        print("COMBINED TRAVEL INFORMATION")
+        print(f"{'=' * 40}")
+        
+        print(f"\n📍 Combined Destinations: {multi_info.combined_destination}")
+        print(f"\n📊 Summary:")
+        print(f"   - Videos processed: {len(multi_info.videos)}")
+        print(f"   - Total unique places: {len(multi_info.all_places)}")
+        print(f"   - Total unique activities: {len(multi_info.all_activities)}")
+        print(f"   - Total hidden gems: {len(multi_info.all_hidden_gems)}")
+        print(f"   - Total food recommendations: {len(multi_info.all_food_recommendations)}")
+        print(f"   - Total travel tips: {len(multi_info.all_travel_tips)}")
+        
+        if multi_info.all_places:
+            print(f"\n🏛️ All Unique Places:")
+            for place in multi_info.all_places[:10]:
+                print(f"   - {place.name} ({place.category})")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\nError: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def test_json_output():
+    """Test getting travel info as JSON for itinerary generation."""
+    print("\n" + "=" * 60)
+    print("Test 5: JSON Output for Itinerary Generation")
+    print("=" * 60)
+    
+    from services.youtube_video_service import youtube_video_service
+    
+    youtube_url = "https://www.youtube.com/watch?v=6igdCnYjBt4"
+    
+    print(f"\nYouTube URL: {youtube_url}")
+    print("\nExtracting as JSON...")
+    
+    try:
+        travel_info = await youtube_video_service.extract_travel_info(youtube_url)
+        
+        json_output = travel_info.model_dump_json(indent=2)
+        print(f"\nJSON Output (first 2000 chars):\n{json_output[:2000]}...")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\nError: {e}")
+        return False
+
+
+async def main():
+    """Main function to run all tests."""
+    print("=" * 60)
+    print("YouTube Video Service Test")
+    print("Using Gemini's Native Video Processing")
+    print("=" * 60)
+    
+    try:
+        from services.youtube_video_service import youtube_video_service
+        print("✓ YouTube Video Service imported successfully")
+    except ImportError as e:
+        print(f"✗ Import error: {e}")
+        return
+    except Exception as e:
+        print(f"✗ Initialization error: {e}")
+        import traceback
+        traceback.print_exc()
         return
     
     tests = [
-        ("Simple Text Generation", test_simple_text_generation),
-        ("Creative Writing", test_creative_writing),
-        ("Code Generation", test_code_generation),
-        ("Multi-turn Conversation", test_conversation),
-        ("Custom Generation Config", test_with_generation_config),
-        ("List Available Models", test_list_models),
+        ("Single Video Extraction", test_single_video_extraction),
+        ("Video Transcript", test_video_transcript),
+        ("Video Summary", test_video_summary),
+        ("Multiple Videos", test_multiple_videos),
+        ("JSON Output", test_json_output),
     ]
     
     passed = 0
@@ -156,17 +231,33 @@ def main():
     
     for test_name, test_func in tests:
         try:
-            test_func()
-            passed += 1
-            print(f"\n✓ {test_name} - PASSED")
+            result = await test_func()
+            if result:
+                passed += 1
+                print(f"\n✓ {test_name} - PASSED")
+            else:
+                failed += 1
+                print(f"\n✗ {test_name} - FAILED")
         except Exception as e:
             failed += 1
             print(f"\n✗ {test_name} - FAILED: {e}")
     
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print(f"Test Results: {passed} passed, {failed} failed")
-    print("=" * 50)
+    print("=" * 60)
+    
+    if passed > 0:
+        print("""
+SUCCESS! The YouTube Video Service can:
+1. Extract travel information directly from videos
+2. Get video transcripts
+3. Summarize videos
+4. Process multiple videos and combine info
+5. Output structured JSON for itinerary generation
+
+This can replace the youtube-transcript-api approach!
+""")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
