@@ -267,6 +267,19 @@ const PDFGenerator = {
         };
     },
 
+    getYouTubeVideoId(url) {
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+            /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) return match[1];
+        }
+        return null;
+    },
+
     createTitlePage(data) {
         const destination = this.toTitleCase(data.destination) +
             (data.country ? `, ${this.toTitleCase(data.country)}` : '');
@@ -329,6 +342,39 @@ const PDFGenerator = {
             alignment: 'center',
             margin: [40, 0, 40, 0]
         });
+
+        if (data.youtube_urls && data.youtube_urls.length > 0) {
+            content.push({
+                canvas: [
+                    {
+                        type: 'line',
+                        x1: 150, y1: 0,
+                        x2: 365, y2: 0,
+                        lineWidth: 1,
+                        lineColor: '#cccccc'
+                    }
+                ],
+                margin: [0, 30, 0, 20]
+            });
+
+            content.push({
+                text: 'Generated from YouTube Videos',
+                fontSize: 12,
+                bold: true,
+                color: '#555555',
+                alignment: 'center',
+                margin: [0, 0, 0, 12]
+            });
+
+            content.push({
+                text: data.youtube_urls.map(url => url).join('\n'),
+                fontSize: 10,
+                color: '#666666',
+                alignment: 'center',
+                margin: [40, 0, 40, 0],
+                lineHeight: 1.5
+            });
+        }
 
         return content;
     },

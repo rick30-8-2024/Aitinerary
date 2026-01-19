@@ -426,6 +426,7 @@ async def get_itinerary(
         best_time_to_visit=itinerary.get("best_time_to_visit"),
         weather_info=itinerary.get("weather_info"),
         youtube_urls=itinerary.get("youtube_urls", []),
+        video_titles=itinerary.get("video_titles", []),
         created_at=itinerary.get("created_at", datetime.utcnow()),
         is_public=itinerary.get("is_public", False),
         share_code=itinerary.get("share_code")
@@ -462,6 +463,7 @@ async def get_shared_itinerary(share_code: str):
         best_time_to_visit=itinerary.get("best_time_to_visit"),
         weather_info=itinerary.get("weather_info"),
         youtube_urls=itinerary.get("youtube_urls", []),
+        video_titles=itinerary.get("video_titles", []),
         created_at=itinerary.get("created_at", datetime.utcnow()),
         is_public=itinerary.get("is_public", False),
         share_code=itinerary.get("share_code")

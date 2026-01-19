@@ -114,6 +114,7 @@ function renderItinerary() {
         `${itineraryData.days.length} Days`;
     document.getElementById('itinerary-summary').textContent = itineraryData.summary;
 
+    renderSourceVideos();
     renderDays();
     renderBudget();
     renderNavigation();
@@ -124,6 +125,62 @@ function renderItinerary() {
     if (isSharedView) {
         document.getElementById('share-btn').style.display = 'none';
     }
+}
+
+function getYouTubeVideoId(url) {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
+
+function getYouTubeThumbnail(videoId, quality = 'mqdefault') {
+    return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
+}
+
+function renderSourceVideos() {
+    const youtubeUrls = itineraryData.youtube_urls || [];
+    const cardEl = document.getElementById('source-videos-card');
+    const listEl = document.getElementById('source-videos-list');
+    
+    if (!youtubeUrls || youtubeUrls.length === 0) {
+        cardEl.style.display = 'none';
+        return;
+    }
+    
+    cardEl.style.display = 'block';
+    
+    listEl.innerHTML = youtubeUrls.map((url, index) => {
+        const videoId = getYouTubeVideoId(url);
+        if (!videoId) return '';
+        
+        const thumbnail = getYouTubeThumbnail(videoId);
+        const videoTitle = itineraryData.video_titles && itineraryData.video_titles[index]
+            ? itineraryData.video_titles[index]
+            : `Video ${index + 1}`;
+        
+        return `
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="source-video-item">
+                <div class="video-thumbnail">
+                    <img src="${thumbnail}" alt="${escapeHtml(videoTitle)}" loading="lazy">
+                    <div class="play-overlay">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                    </div>
+                </div>
+                <div class="video-info">
+                    <span class="video-title">${escapeHtml(videoTitle)}</span>
+                </div>
+            </a>
+        `;
+    }).join('');
 }
 
 function renderDays() {

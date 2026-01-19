@@ -161,6 +161,7 @@ class ItineraryResponse(Itinerary):
     
     id: str = Field(..., description="Unique itinerary ID")
     youtube_urls: list[str] = Field(default_factory=list)
+    video_titles: list[str] = Field(default_factory=list, description="Titles of source YouTube videos")
     created_at: datetime
     is_public: bool = False
     share_code: Optional[str] = None
