@@ -9,6 +9,7 @@
     let pollingInterval = null;
     const POLLING_INTERVAL_MS = 5000;
     let updatePillFn = null;
+    let userCredits = 0;
 
     function initPageLoader() {
         const shaderFrame = document.querySelector('.shader-frame');
@@ -87,6 +88,7 @@
         setupFormSubmission();
         setupSuccessModal();
         setupSearch();
+        setupRechargeModal();
         loadItineraries();
     }
 
@@ -98,10 +100,158 @@
             if (!res.ok) throw new Error('Failed to fetch user info');
             const data = await res.json();
             document.getElementById('user-name').textContent = data.name || data.email.split('@')[0];
+            userCredits = data.credits || 0;
+            updateCreditsDisplay(userCredits);
         } catch (err) {
             console.error(err);
             document.getElementById('user-name').textContent = 'User';
         }
+    }
+
+    function updateCreditsDisplay(credits) {
+        userCredits = credits;
+        const el = document.getElementById('credits-amount');
+        if (el) el.textContent = `₹${credits.toLocaleString('en-IN')}`;
+        const balanceEl = document.getElementById('recharge-current-balance');
+        if (balanceEl) balanceEl.textContent = `₹${credits.toLocaleString('en-IN')}`;
+    }
+
+    async function fetchCredits() {
+        try {
+            const res = await fetch(`${API_BASE}/api/payment/credits`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                updateCreditsDisplay(data.credits);
+            }
+        } catch (err) {
+            console.error('Failed to fetch credits:', err);
+        }
+    }
+
+    function setupRechargeModal() {
+        const modal = document.getElementById('recharge-modal');
+        const creditsBtn = document.getElementById('credits-btn');
+        const cancelBtn = document.getElementById('cancel-recharge');
+        const confirmBtn = document.getElementById('confirm-recharge');
+        const amountInput = document.getElementById('recharge-amount');
+        const presets = modal.querySelectorAll('.recharge-preset');
+
+        creditsBtn.addEventListener('click', () => {
+            fetchCredits();
+            modal.classList.add('show');
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.remove('show');
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('show');
+        });
+
+        presets.forEach(btn => {
+            btn.addEventListener('click', () => {
+                presets.forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                amountInput.value = btn.dataset.amount;
+            });
+        });
+
+        amountInput.addEventListener('input', () => {
+            presets.forEach(p => p.classList.remove('active'));
+        });
+
+        confirmBtn.addEventListener('click', async () => {
+            const amount = parseInt(amountInput.value);
+            if (!amount || amount < 599) {
+                amountInput.style.borderColor = 'var(--danger)';
+                setTimeout(() => { amountInput.style.borderColor = ''; }, 2000);
+                return;
+            }
+
+            confirmBtn.disabled = true;
+            confirmBtn.querySelector('.btn-text').style.display = 'none';
+            confirmBtn.querySelector('.btn-loader').style.display = 'flex';
+
+            try {
+                const orderRes = await fetch(`${API_BASE}/api/payment/create-order`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ amount })
+                });
+
+                if (!orderRes.ok) {
+                    const err = await orderRes.json();
+                    throw new Error(err.detail || 'Failed to create order');
+                }
+
+                const orderData = await orderRes.json();
+
+                const options = {
+                    key: orderData.key_id,
+                    amount: orderData.amount * 100,
+                    currency: orderData.currency,
+                    name: 'Aitinerary',
+                    description: `Recharge ₹${orderData.amount} credits`,
+                    order_id: orderData.order_id,
+                    handler: async function (response) {
+                        try {
+                            const verifyRes = await fetch(`${API_BASE}/api/payment/verify`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${accessToken}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature,
+                                    amount: orderData.amount
+                                })
+                            });
+
+                            if (verifyRes.ok) {
+                                const verifyData = await verifyRes.json();
+                                updateCreditsDisplay(verifyData.credits);
+                                modal.classList.remove('show');
+                            } else {
+                                alert('Payment verification failed. Please contact support.');
+                            }
+                        } catch (err) {
+                            console.error('Payment verification error:', err);
+                            alert('Payment verification failed. Please contact support.');
+                        }
+                    },
+                    prefill: {},
+                    theme: {
+                        color: '#0b0b0f'
+                    },
+                    modal: {
+                        ondismiss: function () {
+                            confirmBtn.disabled = false;
+                            confirmBtn.querySelector('.btn-text').style.display = 'flex';
+                            confirmBtn.querySelector('.btn-loader').style.display = 'none';
+                        }
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+                rzp.open();
+
+            } catch (err) {
+                console.error('Recharge error:', err);
+                alert(err.message || 'Failed to initiate payment');
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.querySelector('.btn-text').style.display = 'flex';
+                confirmBtn.querySelector('.btn-loader').style.display = 'none';
+            }
+        });
     }
 
     function setupTabSwitching() {
@@ -751,6 +901,7 @@
                     throw new Error(err.detail || 'Failed to generate itinerary');
                 }
 
+                fetchCredits();
                 successModal.classList.add('show');
                 resetForm();
 
@@ -758,6 +909,11 @@
                 const errorEl = document.getElementById('error-message');
                 errorEl.textContent = err.message;
                 errorEl.classList.add('show');
+                if (err.message.includes('Insufficient credits') || err.message.includes('recharge')) {
+                    setTimeout(() => {
+                        document.getElementById('recharge-modal').classList.add('show');
+                    }, 1500);
+                }
             } finally {
                 generateBtn.disabled = false;
                 generateBtn.querySelector('.btn-text').style.display = 'flex';

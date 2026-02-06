@@ -263,6 +263,9 @@ body {
     letter-spacing: -0.5px;
     margin-bottom: 12px;
     color: var(--text);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
 }
 
 .meta-row {
@@ -583,6 +586,11 @@ body {
     font-size: 24px;
 }
 
+.meal-content {
+    flex: 1;
+    min-width: 0;
+}
+
 .meal-content h4 {
     font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
     font-size: 14px;
@@ -600,10 +608,16 @@ body {
 
 .meal-meta {
     display: flex;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 8px 12px;
     font-family: 'PlayfairDisplay', ui-sans-serif, system-ui;
     font-size: 12px;
     color: var(--muted-2);
+}
+
+.meal-meta span {
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .meals-section {
@@ -1188,10 +1202,145 @@ body:not(.loading) .page-loader {
 @media (max-width: 1024px) {
     .content-layout {
         grid-template-columns: 1fr;
+        gap: 24px;
     }
 
     .sidebar {
-        display: none;
+        order: -1;
+    }
+
+    .main-column {
+        order: 1;
+    }
+
+    .nav-card {
+        display: block;
+    }
+
+    .nav-card.is-sticky {
+        position: static;
+        width: auto;
+    }
+
+    .sidebar-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .sidebar-content .card {
+        margin-bottom: 0;
+    }
+
+    .sidebar-content .nav-card {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        padding: 14px 20px;
+    }
+
+    .header-left {
+        gap: 14px;
+    }
+
+    .brand-mark {
+        font-size: 28px;
+    }
+
+    .main-content {
+        padding: 20px;
+    }
+
+    .container {
+        padding: 0;
+    }
+
+    .itinerary-header {
+        padding: 20px 22px;
+        margin-bottom: 24px;
+    }
+
+    .itinerary-header h1 {
+        font-size: 26px;
+        letter-spacing: -0.3px;
+    }
+
+    .meta-row {
+        gap: 16px;
+    }
+
+    .summary {
+        font-size: 14px;
+    }
+
+    .content-layout {
+        gap: 20px;
+    }
+
+    .sidebar-content {
+        grid-template-columns: 1fr;
+    }
+
+    .day-header {
+        padding: 16px 20px;
+    }
+
+    .day-content {
+        padding: 20px;
+    }
+
+    .day-summary {
+        padding: 14px 20px;
+    }
+
+    .activity-item {
+        padding: 16px;
+        gap: 14px;
+    }
+
+    .meal-item {
+        padding: 14px;
+        gap: 12px;
+    }
+
+    .meal-meta {
+        flex-wrap: wrap;
+    }
+
+    .card-header {
+        padding: 16px 18px;
+    }
+
+    .card-body {
+        padding: 16px 18px;
+    }
+
+    .budget-total .amount {
+        font-size: 24px;
+    }
+
+    .modal-content {
+        max-width: 100%;
+        margin: 16px;
+    }
+
+    .chat-window {
+        width: 320px;
+    }
+
+    .edit-btn {
+        opacity: 1;
+    }
+
+    .card-header:hover .edit-btn,
+    .editable-section:hover .edit-btn,
+    .day-header:hover .edit-btn,
+    .activity-item:hover > .edit-btn,
+    .meal-item:hover > .edit-btn {
+        opacity: 1;
     }
 }
 
@@ -1200,39 +1349,16 @@ body:not(.loading) .page-loader {
         padding: 12px 16px;
     }
 
+    .header-left {
+        gap: 10px;
+    }
+
     .brand-mark {
-        font-size: 28px;
-    }
-
-    .main-content {
-        padding: 16px;
-    }
-
-    .itinerary-header h1 {
         font-size: 24px;
     }
 
-    .meta-row {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .day-header {
-        flex-direction: column;
-        gap: 12px;
-        align-items: flex-start;
-    }
-
-    .activity-item {
-        flex-direction: column;
-    }
-
-    .activity-time {
-        text-align: left;
-    }
-
     .header-actions {
-        gap: 8px;
+        gap: 6px;
     }
 
     .btn-primary span,
@@ -1245,14 +1371,1020 @@ body:not(.loading) .page-loader {
     .btn-secondary,
     .btn-back {
         padding: 10px 12px;
+        min-width: 40px;
+        justify-content: center;
+    }
+
+    .main-content {
+        padding: 16px;
+    }
+
+    .itinerary-header {
+        padding: 16px 18px;
+        margin-bottom: 20px;
+        border-radius: 14px;
+    }
+
+    .itinerary-header h1 {
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+
+    .meta-row {
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+
+    .meta-row span {
+        font-size: 13px;
+    }
+
+    .summary {
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .content-layout {
+        gap: 16px;
+    }
+
+    .day-card {
+        border-radius: 14px;
+        margin-bottom: 16px;
+    }
+
+    .day-header {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 14px 16px;
+    }
+
+    .day-header h2 {
+        font-size: 15px;
+        flex: 1;
+        min-width: 0;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .day-cost {
+        font-size: 13px;
+        padding: 4px 12px;
+    }
+
+    .day-summary {
+        padding: 12px 16px;
+        font-size: 13px;
+    }
+
+    .day-content {
+        padding: 16px;
+    }
+
+    .activity-item {
+        flex-direction: column;
+        padding: 14px;
+        gap: 10px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+    }
+
+    .activity-time {
+        text-align: left;
+        min-width: unset;
+    }
+
+    .activity-content h4 {
+        font-size: 13px;
+    }
+
+    .activity-content p {
+        font-size: 12px;
+        margin-bottom: 8px;
+    }
+
+    .activity-meta {
+        gap: 6px;
+        font-size: 11px;
+        flex-wrap: wrap;
+    }
+
+    .activity-meta span {
+        font-size: 11px;
+        padding: 3px 8px;
+    }
+
+    .activity-item > .edit-btn {
+        position: absolute;
+        top: 8px;
+        right: 6px;
+    }
+
+    .meal-item {
+        padding: 12px;
+        gap: 10px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+        flex-wrap: wrap;
+    }
+
+    .meal-item > .edit-btn {
+        position: absolute;
+        top: 8px;
+        right: 6px;
+    }
+
+    .meal-icon {
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .meal-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .meal-content h4 {
+        font-size: 13px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .meal-content p {
+        font-size: 11px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .meal-meta {
+        gap: 6px;
+        font-size: 11px;
+        flex-wrap: wrap;
+    }
+
+    .meal-meta span {
+        font-size: 10px;
+        word-break: break-word;
+    }
+
+    .meals-section {
+        margin-top: 16px;
+        padding-top: 16px;
+    }
+
+    .card {
+        border-radius: 14px;
+        margin-bottom: 16px;
+    }
+
+    .card-header {
+        padding: 14px 16px;
+    }
+
+    .card-header h2,
+    .card-header h3 {
+        font-size: 14px;
+        gap: 8px;
+    }
+
+    .card-body {
+        padding: 14px 16px;
+    }
+
+    .tips-list li,
+    .packing-list li {
+        padding: 8px 0 8px 20px;
+        font-size: 13px;
+    }
+
+    .phrases-list li {
+        padding: 10px 0;
+        font-size: 13px;
+    }
+
+    .sidebar-content {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .budget-total {
+        padding: 14px;
+    }
+
+    .budget-total .amount {
+        font-size: 22px;
+    }
+
+    .budget-total .label {
+        font-size: 11px;
+    }
+
+    .source-video-item {
+        gap: 10px;
+    }
+
+    .source-video-thumb {
+        width: 80px;
+        height: 45px;
+    }
+
+    .modal-content {
+        margin: 12px;
+        border-radius: 14px;
+    }
+
+    .modal-header {
+        padding: 16px 18px;
+    }
+
+    .modal-header h3 {
+        font-size: 15px;
+    }
+
+    .modal-body {
+        padding: 18px;
+    }
+
+    .share-link-input {
+        flex-direction: column;
+    }
+
+    .share-link-input input {
+        font-size: 14px;
+    }
+
+    .btn-copy {
+        padding: 10px;
+        text-align: center;
+    }
+
+    .inline-edit-overlay {
+        padding: 12px;
+    }
+
+    .inline-edit-overlay .edit-field-group input,
+    .inline-edit-overlay .edit-field-group textarea {
+        font-size: 14px;
+        padding: 8px 10px;
+    }
+
+    .edit-field {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+
+    .edit-actions {
+        justify-content: stretch;
+    }
+
+    .edit-save,
+    .edit-cancel {
+        flex: 1;
+        text-align: center;
+        padding: 8px 12px;
+    }
+
+    .edit-list-item input {
+        font-size: 14px;
     }
 
     .loader-brand {
         font-size: 2rem;
     }
-    
+
     .loader-spinner svg {
         width: 32px;
         height: 32px;
     }
+
+    .chat-fab {
+        width: 52px;
+        height: 52px;
+        right: 16px;
+        bottom: 16px;
+    }
+
+    .chat-panel-overlay {
+        display: block;
+    }
+
+    .chat-window {
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 100dvh;
+        border-radius: 0;
+        border: none;
+    }
+
+    .chat-header {
+        padding: 14px 16px;
+    }
+
+    .chat-messages {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .chat-input-area {
+        padding: 12px 14px;
+    }
+
+    .chat-input-area input {
+        font-size: 16px;
+        padding: 10px 14px;
+    }
+
+    .chat-bubble {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .header-content {
+        padding: 10px 12px;
+    }
+
+    .brand-mark {
+        font-size: 22px;
+    }
+
+    .main-content {
+        padding: 12px;
+    }
+
+    .itinerary-header {
+        padding: 14px;
+    }
+
+    .itinerary-header h1 {
+        font-size: 18px;
+    }
+
+    .day-header {
+        padding: 10px 12px;
+    }
+
+    .day-header h2 {
+        font-size: 13px;
+    }
+
+    .day-cost {
+        font-size: 11px;
+        padding: 3px 10px;
+    }
+
+    .day-content {
+        padding: 10px;
+    }
+
+    .day-summary {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    .activity-item {
+        padding: 10px;
+    }
+
+    .activity-content h4 {
+        font-size: 12px;
+    }
+
+    .activity-content p {
+        font-size: 11px;
+    }
+
+    .meal-item {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .meal-icon {
+        font-size: 18px;
+    }
+
+    .meal-content h4 {
+        font-size: 12px;
+    }
+
+    .meal-content p {
+        font-size: 10px;
+    }
+
+    .meal-meta {
+        font-size: 10px;
+        gap: 4px;
+    }
+
+    .meals-section h3 {
+        font-size: 12px;
+    }
+
+    .card-header {
+        padding: 12px 14px;
+    }
+
+    .card-body {
+        padding: 12px 14px;
+    }
+
+    .modal-content {
+        margin: 8px;
+    }
+
+    .modal-header {
+        padding: 14px 16px;
+    }
+
+    .modal-body {
+        padding: 14px 16px;
+    }
+
+    .chat-fab {
+        width: 48px;
+        height: 48px;
+        right: 12px;
+        bottom: 12px;
+    }
+}
+
+
+.chat-widget {
+    position: fixed;
+    z-index: 1000;
+}
+
+.chat-fab {
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+    transition: var(--transition);
+    z-index: 1002;
+}
+
+.chat-fab:hover {
+    background: var(--primary-hover);
+    transform: scale(1.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.chat-fab .chat-fab-close {
+    display: none;
+}
+
+.chat-widget.open .chat-fab {
+    display: none;
+}
+
+.chat-panel-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 300ms ease;
+    pointer-events: none;
+}
+
+.chat-widget.open .chat-panel-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.chat-window {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 380px;
+    height: 100dvh;
+    background: var(--card);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-left: 1px solid var(--card-border);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1001;
+    transform: translateX(100%);
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+}
+
+.chat-widget.open .chat-window {
+    transform: translateX(0);
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    flex-shrink: 0;
+}
+
+.chat-header-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.chat-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 6px;
+    border-radius: 8px;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-close:hover {
+    background: rgba(0,0,0,0.06);
+    color: var(--text);
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.15) transparent;
+}
+
+.chat-messages::-webkit-scrollbar {
+    width: 5px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 4px;
+}
+
+.chat-message {
+    display: flex;
+    max-width: 85%;
+}
+
+.chat-message.user {
+    align-self: flex-end;
+}
+
+.chat-message.assistant {
+    align-self: flex-start;
+}
+
+.chat-bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    word-break: break-word;
+}
+
+.chat-message.user .chat-bubble {
+    background: var(--primary);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-message.assistant .chat-bubble {
+    background: rgba(0,0,0,0.05);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+}
+
+.chat-bubble p {
+    margin: 0 0 6px 0;
+}
+
+.chat-bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.chat-bubble strong {
+    font-weight: 600;
+}
+
+.chat-bubble a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.chat-message.user .chat-bubble a {
+    color: rgba(255,255,255,0.9);
+}
+
+.chat-typing {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px;
+    align-items: center;
+}
+
+.chat-typing span {
+    width: 7px;
+    height: 7px;
+    background: var(--muted-2);
+    border-radius: 50%;
+    animation: chatTyping 1.4s infinite ease-in-out;
+}
+
+.chat-typing span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.chat-typing span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes chatTyping {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--line);
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    flex-shrink: 0;
+}
+
+.chat-input-area input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    background: rgba(255,255,255,0.7);
+    color: var(--text);
+    outline: none;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.chat-input-area input:focus {
+    border-color: var(--line-strong);
+    background: rgba(255,255,255,0.95);
+}
+
+.chat-input-area input::placeholder {
+    color: var(--muted-2);
+}
+
+.chat-send {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.chat-send:hover {
+    background: var(--primary-hover);
+    transform: scale(1.05);
+}
+
+.chat-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+
+.edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted-2);
+    padding: 4px;
+    border-radius: 6px;
+    transition: var(--transition);
+    opacity: 0.6;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.card-header:hover .edit-btn,
+.editable-section:hover .edit-btn,
+.day-header:hover .edit-btn,
+.activity-item:hover > .edit-btn,
+.meal-item:hover > .edit-btn {
+    opacity: 1;
+}
+
+.edit-btn:hover {
+    color: var(--text);
+    background: rgba(0,0,0,0.06);
+}
+
+.edit-btn.active {
+    opacity: 1;
+    color: var(--success);
+}
+
+.editable-section {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.editable-section h1 {
+    flex: 1;
+    min-width: 0;
+}
+
+.editable-section .edit-btn {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.edit-field {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.5;
+    background: rgba(255,255,255,0.85);
+    color: var(--text);
+    outline: none;
+    transition: var(--transition);
+    resize: vertical;
+    min-height: 40px;
+}
+
+.edit-field:focus {
+    border-color: var(--line-strong);
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 0 0 3px rgba(11,11,15,0.06);
+}
+
+.edit-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    justify-content: flex-end;
+}
+
+.edit-save,
+.edit-cancel {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    font-family: inherit;
+}
+
+.edit-save {
+    background: var(--primary);
+    color: #fff;
+}
+
+.edit-save:hover {
+    background: var(--primary-hover);
+}
+
+.edit-cancel {
+    background: rgba(0,0,0,0.06);
+    color: var(--text);
+}
+
+.edit-cancel:hover {
+    background: rgba(0,0,0,0.1);
+}
+
+.edit-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.edit-list-item input {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    background: rgba(255,255,255,0.85);
+    color: var(--text);
+    outline: none;
+    transition: var(--transition);
+}
+
+.edit-list-item input:focus {
+    border-color: var(--line-strong);
+}
+
+.edit-list-remove {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    line-height: 1;
+    transition: var(--transition);
+}
+
+.edit-list-remove:hover {
+    background: var(--danger-light);
+}
+
+.edit-list-add {
+    background: none;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.edit-list-add:hover {
+    border-color: var(--line-strong);
+    color: var(--text);
+    background: rgba(0,0,0,0.02);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+}
+
+.card-header h2,
+.card-header h3 {
+    flex: 1;
+}
+
+.day-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.day-theme-edit-btn {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.day-summary {
+    position: relative;
+}
+
+.day-summary > .edit-btn {
+    opacity: 0.6;
+    vertical-align: middle;
+}
+
+.day-summary > .edit-btn:hover {
+    opacity: 1;
+}
+
+.activity-item {
+    position: relative;
+}
+
+.activity-content h4 {
+    padding-right: 30px;
+}
+
+.activity-item > .edit-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+}
+
+.meal-item {
+    position: relative;
+}
+
+.meal-content h4 {
+    padding-right: 30px;
+}
+
+.meal-item > .edit-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+}
+
+.inline-edit-overlay .edit-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    justify-content: flex-end;
+}
+
+.inline-edit-overlay {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    margin-top: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.inline-edit-overlay .edit-field-group {
+    margin-bottom: 10px;
+}
+
+.inline-edit-overlay .edit-field-group label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.inline-edit-overlay .edit-field-group input,
+.inline-edit-overlay .edit-field-group textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    background: rgba(255,255,255,0.85);
+    color: var(--text);
+    outline: none;
+    transition: var(--transition);
+    resize: vertical;
+}
+
+.inline-edit-overlay .edit-field-group input:focus,
+.inline-edit-overlay .edit-field-group textarea:focus {
+    border-color: var(--line-strong);
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 0 0 3px rgba(11,11,15,0.06);
+}
+
+.budget-card .edit-btn {
+    position: relative;
 }

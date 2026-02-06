@@ -10,6 +10,7 @@ from config.database import database
 from api.routers.auth import router as auth_router
 from api.routers.youtube import router as youtube_router
 from api.routers.itinerary import router as itinerary_router, create_itinerary_indexes
+from api.routers.payment import router as payment_router
 from page_serving_routers.pages_router import router as pages_router
 from services.auth_service import create_email_index
 from services.gemini_service import gemini_service
@@ -53,6 +54,7 @@ app.mount("/fonts", StaticFiles(directory="page_serving_routers/fonts"), name="f
 app.include_router(auth_router)
 app.include_router(youtube_router)
 app.include_router(itinerary_router)
+app.include_router(payment_router)
 app.include_router(pages_router)
 
 

@@ -9,11 +9,15 @@ using Google's Gemini model with a dual-agent architecture:
 
 import json
 import re
+import logging
+import traceback
 from typing import Optional
 
 import google.generativeai as genai
 import google.ai.generativelanguage as glm
 from google.generativeai.types import GenerationConfig
+from google import genai as genai_new
+from google.genai import types as genai_types
 from pydantic import BaseModel
 
 from config.settings import settings
@@ -27,6 +31,9 @@ from models.itinerary import (
     BudgetBreakdown
 )
 from services.youtube_video_service import VideoTravelInfo, MultiVideoTravelInfo
+
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiServiceError(Exception):
@@ -79,7 +86,7 @@ class GeminiService:
         """Initialize the Gemini service."""
         self._configured = False
         self._model: Optional[genai.GenerativeModel] = None
-        self._search_model: Optional[genai.GenerativeModel] = None
+        self._genai_client: Optional[genai_new.Client] = None
     
     def _configure(self):
         """Configure the Gemini API with the API key."""
@@ -101,14 +108,17 @@ class GeminiService:
         
         return self._model
     
-    def _get_search_model(self) -> genai.GenerativeModel:
-        """Get or create the search-enabled Gemini model."""
-        self._configure()
+    def _get_genai_client(self) -> genai_new.Client:
+        """Get or create the new google-genai SDK client for Google Search grounding."""
+        if not settings.GEMINI_API_KEY:
+            raise APIKeyNotConfiguredError(
+                "GEMINI_API_KEY is not configured. Please set it in your environment variables."
+            )
         
-        if self._search_model is None:
-            self._search_model = genai.GenerativeModel(self.MODEL_NAME)
+        if self._genai_client is None:
+            self._genai_client = genai_new.Client(api_key=settings.GEMINI_API_KEY)
         
-        return self._search_model
+        return self._genai_client
     
     def _get_tool_model(self) -> genai.GenerativeModel:
         """Get or create the tool-calling Gemini model."""
@@ -133,7 +143,7 @@ class GeminiService:
         Returns:
             Search results as plain text
         """
-        model = self._get_search_model()
+        client = self._get_genai_client()
         
         search_prompt = f"""Search the internet and provide detailed, accurate information for: {query}
         
@@ -148,13 +158,14 @@ Provide:
 Be concise but thorough. Format the response as clear, readable text."""
         
         try:
-            response = await model.generate_content_async(
-                search_prompt,
-                generation_config=GenerationConfig(
+            response = await client.aio.models.generate_content(
+                model=self.MODEL_NAME,
+                contents=search_prompt,
+                config=genai_types.GenerateContentConfig(
                     temperature=0.3,
                     top_p=0.95,
+                    tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
                 ),
-                tools="google_search_retrieval"
             )
             
             return response.text or "No search results found."
@@ -879,10 +890,73 @@ RESPOND ONLY WITH THE JSON OBJECT, no additional text."""
         except Exception as e:
             raise GenerationError(f"Itinerary refinement failed: {str(e)}")
     
+    async def chat_with_context(self, message: str, itinerary_context: str, chat_history: list[dict] = None) -> str:
+        """
+        Chat with the user about their trip using Google Search grounding for real-time info.
+
+        Args:
+            message: The user's chat message
+            itinerary_context: JSON string of the itinerary details for context
+            chat_history: List of previous chat messages [{role, content}, ...]
+
+        Returns:
+            AI response as plain text
+        """
+        client = self._get_genai_client()
+
+        history_text = ""
+        if chat_history:
+            for msg in chat_history[-10:]:
+                role = "User" if msg.get("role") == "user" else "Assistant"
+                history_text += f"{role}: {msg.get('content', '')}\n"
+
+        chat_prompt = f"""You are a helpful travel assistant for a trip. You have full context of the user's itinerary below.
+Answer the user's question using the itinerary context AND by searching the internet for real-time, accurate information when needed.
+
+ITINERARY CONTEXT:
+{itinerary_context}
+
+{"CONVERSATION HISTORY:" + chr(10) + history_text if history_text else ""}
+
+USER MESSAGE: {message}
+
+INSTRUCTIONS:
+- If the user asks about places, restaurants, directions, or anything that benefits from current info, search the internet.
+- Reference specific details from their itinerary when relevant (day plans, activities, meals, budget, etc.).
+- Be conversational, helpful, and concise.
+- If suggesting alternatives or new places, mention approximate costs if possible.
+- Format your response in a readable way with short paragraphs. Use markdown sparingly (bold for emphasis only).
+- Do NOT use headers or bullet lists unless specifically asked.
+- Keep responses focused and under 300 words unless the user asks for detailed info."""
+
+        try:
+            logger.info(f"Sending chat request to Gemini model (new SDK): {self.MODEL_NAME}")
+            logger.debug(f"Chat prompt length: {len(chat_prompt)} chars")
+
+            response = await client.aio.models.generate_content(
+                model=self.MODEL_NAME,
+                contents=chat_prompt,
+                config=genai_types.GenerateContentConfig(
+                    temperature=0.7,
+                    top_p=0.95,
+                    tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
+                ),
+            )
+
+            logger.info("Chat response received from Gemini")
+            logger.debug(f"Response text length: {len(response.text) if response.text else 0}")
+
+            return response.text or "I couldn't generate a response. Please try again."
+
+        except Exception as e:
+            logger.error(f"Chat failed with {type(e).__name__}: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise GeminiServiceError(f"Chat failed: {str(e)}")
+
     def close(self):
         """Close the Gemini service and release resources."""
         self._model = None
-        self._search_model = None
+        self._genai_client = None
         self._configured = False
 
 

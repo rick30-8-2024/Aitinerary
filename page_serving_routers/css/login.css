@@ -445,25 +445,136 @@ input:-webkit-autofill:active {
     to { transform: rotate(360deg); }
 }
 
-@media (max-width: 640px) {
-    .fields-row {
-        grid-template-columns: 1fr;
+@media (max-width: 768px) {
+    body {
+        overflow: auto;
+        overflow-x: hidden;
+    }
+
+    .floating-brand {
+        top: 8%;
+    }
+
+    .floating-brand .brand-mark {
+        font-size: 5rem;
+    }
+
+    .auth-shell {
+        padding: 20px;
+        padding-top: 160px;
+        min-height: 100vh;
+        min-height: 100dvh;
     }
 
     .auth-card {
         width: 100%;
     }
 
+    .dynamic-island {
+        margin-bottom: 16px;
+    }
+}
+
+@media (max-width: 640px) {
     .floating-brand {
         top: 5%;
     }
 
     .floating-brand .brand-mark {
-        font-size: 32px;
+        font-size: 3.5rem;
+        letter-spacing: 1px;
     }
 
     .auth-shell {
-        padding-top: 140px;
+        padding: 16px;
+        padding-top: 120px;
+    }
+
+    .fields-row {
+        grid-template-columns: 1fr;
+    }
+
+    .fields-container {
+        gap: 12px;
+    }
+
+    .field label {
+        font-size: 10px;
+        margin-bottom: 6px;
+    }
+
+    .field input {
+        padding: 12px 14px;
+        font-size: 16px;
+    }
+
+    .btn-primary {
+        padding: 14px 20px;
+    }
+
+    .input-wrapper {
+        border-radius: 12px;
+    }
+
+    .field input {
+        border-radius: 12px;
+    }
+
+    .btn-primary {
+        border-radius: 12px;
+    }
+
+    .error-message,
+    .success-message {
+        font-size: 12px;
+        padding: 8px 10px;
+        border-radius: 10px;
+    }
+}
+
+@media (max-width: 440px) {
+    .floating-brand {
+        top: 3%;
+    }
+
+    .floating-brand .brand-mark {
+        font-size: 2.5rem;
+    }
+
+    .auth-shell {
+        padding: 12px;
+        padding-top: 90px;
+    }
+
+    .dynamic-island {
+        padding: 4px;
+        min-height: 42px;
+    }
+
+    .nav-item {
+        height: 34px;
+        padding: 0 10px;
+    }
+
+    .nav-item.active {
+        padding: 0 14px;
+    }
+
+    .nav-item-text {
+        font-size: 12px;
+    }
+
+    .field input {
+        padding: 11px 12px;
+    }
+
+    .btn-primary {
+        padding: 13px 16px;
+        font-size: 13px;
+    }
+
+    .password-toggle {
+        right: 10px;
     }
 }
 
@@ -527,12 +638,31 @@ body:not(.loading) .page-loader {
 }
 
 @media (max-width: 640px) {
+    .loader-content {
+        gap: 18px;
+    }
+
     .loader-brand {
         font-size: 2rem;
     }
-    
+
     .loader-spinner svg {
         width: 32px;
         height: 32px;
+    }
+}
+
+@media (max-width: 440px) {
+    .loader-content {
+        gap: 14px;
+    }
+
+    .loader-brand {
+        font-size: 1.6rem;
+    }
+
+    .loader-spinner svg {
+        width: 28px;
+        height: 28px;
     }
 }

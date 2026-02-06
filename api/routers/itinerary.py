@@ -4,11 +4,12 @@ Itinerary API Router
 Provides endpoints for itinerary generation, status checking, and CRUD operations.
 """
 
+import json
 import uuid
 import asyncio
 import logging
 import traceback
-from typing import Optional, Literal
+from typing import Optional, Literal, Any
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Depends, status
@@ -31,6 +32,8 @@ from models.itinerary import (
 )
 from services.youtube_video_service import youtube_video_service, YouTubeVideoServiceError
 from services.gemini_service import gemini_service, GeminiServiceError
+from services.payment_service import payment_service
+from config.settings import settings
 
 
 router = APIRouter(prefix="/api/itinerary", tags=["Itinerary"])
@@ -65,6 +68,42 @@ class StatusResponse(BaseModel):
     status: Literal["generating", "completed", "failed"]
     message: Optional[str] = None
     progress: Optional[int] = None
+    credits_refunded: bool = False
+
+
+class ChatRequest(BaseModel):
+    """Request schema for itinerary chat."""
+    
+    message: str = Field(..., min_length=1, max_length=2000, description="User's chat message")
+    history: list[dict] = Field(default_factory=list, description="Previous chat messages [{role, content}]")
+
+
+class ChatResponse(BaseModel):
+    """Response schema for itinerary chat."""
+    
+    response: str
+
+
+class ChatHistoryResponse(BaseModel):
+    """Response schema for retrieving chat history."""
+    
+    history: list[dict] = Field(default_factory=list)
+
+
+class ItineraryUpdateRequest(BaseModel):
+    """Request schema for updating itinerary fields."""
+    
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    destination: Optional[str] = None
+    general_tips: Optional[list[str]] = None
+    packing_suggestions: Optional[list[str]] = None
+    language_phrases: Optional[list[str]] = None
+    days: Optional[list[dict[str, Any]]] = None
+    budget_breakdown: Optional[dict[str, Any]] = None
+    accommodation_note: Optional[str] = None
+    best_time_to_visit: Optional[str] = None
+    weather_info: Optional[str] = None
 
 
 def get_itineraries_collection():
@@ -245,12 +284,18 @@ async def process_itinerary_generation(
     except Exception as e:
         log_error(f"Generation failed: {str(e)}", prefix="ITINERARY")
         logger.error(f"[ITINERARY] Full traceback: {traceback.format_exc()}")
+
+        refund_amount = settings.ITINERARY_COST
+        new_balance = await payment_service.refund_credits(user_id, refund_amount)
+        log_success(f"Refunded {refund_amount} credits to user {user_id}. New balance: {new_balance}", prefix="CREDITS")
+
         await collection.update_one(
             {"_id": ObjectId(itinerary_id)},
             {
                 "$set": {
                     "status": "failed",
                     "status_message": str(e),
+                    "credits_refunded": True,
                     "updated_at": datetime.utcnow()
                 }
             }
@@ -271,7 +316,24 @@ async def generate_itinerary(
     log_debug(f"Received generation request from user_id={current_user.id}", prefix="GENERATE")
     log_debug(f"YouTube URLs: {request.youtube_urls}", prefix="GENERATE")
     log_debug(f"Destination: {request.destination_name or 'Not specified'}", prefix="GENERATE")
-    
+
+    cost = settings.ITINERARY_COST
+    credits = await payment_service.get_user_credits(current_user.id)
+    if credits < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Insufficient credits. You need ₹{cost} but have ₹{credits}. Please recharge."
+        )
+
+    deducted = await payment_service.deduct_credits(current_user.id, cost)
+    if not deducted:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Failed to deduct credits. Please try again."
+        )
+
+    log_debug(f"Deducted {cost} credits from user {current_user.id}", prefix="CREDITS")
+
     collection = get_itineraries_collection()
     
     initial_title = request.title or "Generating..."
@@ -343,7 +405,8 @@ async def get_generation_status(
         itinerary_id=itinerary_id,
         status=itinerary.get("status", "generating"),
         message=itinerary.get("status_message"),
-        progress=itinerary.get("progress", 0)
+        progress=itinerary.get("progress", 0),
+        credits_refunded=itinerary.get("credits_refunded", False)
     )
 
 
@@ -541,3 +604,145 @@ async def delete_itinerary(
         raise HTTPException(status_code=404, detail="Itinerary not found")
     
     return {"message": "Itinerary deleted successfully"}
+
+
+@router.post("/{itinerary_id}/chat", response_model=ChatResponse)
+async def chat_about_itinerary(
+    itinerary_id: str,
+    request: ChatRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Chat with AI about the itinerary using Google Search grounding."""
+    collection = get_itineraries_collection()
+
+    try:
+        itinerary = await collection.find_one({
+            "_id": ObjectId(itinerary_id),
+            "user_id": current_user.id,
+            "status": "completed"
+        })
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid itinerary ID")
+
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+
+    context_fields = {
+        "title": itinerary.get("title"),
+        "destination": itinerary.get("destination"),
+        "country": itinerary.get("country"),
+        "summary": itinerary.get("summary"),
+        "currency": itinerary.get("currency"),
+        "total_budget_estimate": itinerary.get("total_budget_estimate"),
+        "budget_breakdown": itinerary.get("budget_breakdown"),
+        "accommodation_note": itinerary.get("accommodation_note"),
+        "general_tips": itinerary.get("general_tips"),
+        "best_time_to_visit": itinerary.get("best_time_to_visit"),
+        "weather_info": itinerary.get("weather_info"),
+        "days": itinerary.get("days"),
+    }
+    itinerary_context = json.dumps(context_fields, default=str)
+
+    try:
+        logger.info(f"Chat request for itinerary {itinerary_id} from user {current_user.id}")
+        logger.debug(f"Chat message: {request.message[:100]}...")
+        logger.debug(f"Chat history length: {len(request.history) if request.history else 0}")
+        logger.debug(f"Itinerary context length: {len(itinerary_context)} chars")
+
+        response_text = await gemini_service.chat_with_context(
+            message=request.message,
+            itinerary_context=itinerary_context,
+            chat_history=request.history
+        )
+        logger.info(f"Chat response generated successfully for itinerary {itinerary_id}")
+
+        try:
+            await collection.update_one(
+                {"_id": ObjectId(itinerary_id)},
+                {
+                    "$push": {
+                        "chat_history": {
+                            "$each": [
+                                {"role": "user", "content": request.message},
+                                {"role": "assistant", "content": response_text},
+                            ]
+                        }
+                    }
+                }
+            )
+        except Exception as save_err:
+            logger.warning(f"Failed to persist chat history for {itinerary_id}: {save_err}")
+
+        return ChatResponse(response=response_text)
+    except GeminiServiceError as e:
+        logger.error(f"GeminiServiceError in chat for itinerary {itinerary_id}: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected chat error for itinerary {itinerary_id}: {type(e).__name__}: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Failed to get chat response")
+
+
+@router.get("/{itinerary_id}/chat/history", response_model=ChatHistoryResponse)
+async def get_chat_history(
+    itinerary_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Retrieve persisted chat history for an itinerary."""
+    collection = get_itineraries_collection()
+
+    try:
+        itinerary = await collection.find_one(
+            {"_id": ObjectId(itinerary_id), "user_id": current_user.id},
+            {"chat_history": 1}
+        )
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid itinerary ID")
+
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+
+    return ChatHistoryResponse(history=itinerary.get("chat_history", []))
+
+
+@router.patch("/{itinerary_id}", response_model=dict)
+async def update_itinerary(
+    itinerary_id: str,
+    request: ItineraryUpdateRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update editable fields of an itinerary."""
+    collection = get_itineraries_collection()
+
+    try:
+        itinerary = await collection.find_one({
+            "_id": ObjectId(itinerary_id),
+            "user_id": current_user.id,
+            "status": "completed"
+        })
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid itinerary ID")
+
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+
+    update_data = request.model_dump(exclude_none=True)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    update_data["updated_at"] = datetime.utcnow()
+
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(itinerary_id), "user_id": current_user.id},
+            {"$set": update_data}
+        )
+    except Exception as e:
+        logger.error(f"Update error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update itinerary")
+
+    if result.modified_count == 0:
+        raise HTTPException(status_code=400, detail="No changes were made")
+
+    return {"message": "Itinerary updated successfully"}

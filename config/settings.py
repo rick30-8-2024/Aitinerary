@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 5760
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    ITINERARY_COST: int = 599
+    MIN_RECHARGE_AMOUNT: int = 599
+    
     APP_NAME: str = "Aitinerary"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True

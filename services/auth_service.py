@@ -76,6 +76,7 @@ async def create_user(user_data: UserCreate) -> UserResponse:
         "name": user_data.name,
         "email": user_data.email,
         "password_hash": hash_password(user_data.password),
+        "credits": 0,
         "created_at": datetime.utcnow()
     }
     
@@ -85,6 +86,7 @@ async def create_user(user_data: UserCreate) -> UserResponse:
         id=str(result.inserted_id),
         name=user_data.name,
         email=user_data.email,
+        credits=0,
         created_at=user_doc["created_at"]
     )
 

@@ -51,6 +51,7 @@ async def get_current_user(token: Optional[str] = Depends(get_token_from_request
         id=str(user["_id"]),
         name=user.get("name", user["email"].split("@")[0]),
         email=user["email"],
+        credits=user.get("credits", 0),
         created_at=user["created_at"]
     )
 
@@ -74,5 +75,6 @@ async def get_current_user_optional(
         id=str(user["_id"]),
         name=user.get("name", user["email"].split("@")[0]),
         email=user["email"],
+        credits=user.get("credits", 0),
         created_at=user["created_at"]
     )

@@ -24,6 +24,7 @@ class UserInDB(BaseModel):
     name: str
     email: str
     password_hash: str
+    credits: int = 0
     created_at: datetime
     
     class Config:
@@ -35,6 +36,7 @@ class UserResponse(BaseModel):
     id: str
     name: str
     email: str
+    credits: int = 0
     created_at: datetime
 
 
