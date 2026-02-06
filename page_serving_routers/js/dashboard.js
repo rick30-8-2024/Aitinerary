@@ -12,41 +12,28 @@
     let userCredits = 0;
 
     function initPageLoader() {
-        const shaderFrame = document.querySelector('.shader-frame');
         const body = document.body;
-        let shaderLoaded = false;
-        let minTimeElapsed = false;
-        
-        const minLoadTime = 800;
-        
         setTimeout(() => {
-            minTimeElapsed = true;
-            tryRevealPage();
-        }, minLoadTime);
-        
-        function tryRevealPage() {
-            if (shaderLoaded && minTimeElapsed) {
-                body.classList.remove('loading');
-            }
-        }
-        
-        if (shaderFrame) {
-            shaderFrame.addEventListener('load', function() {
-                setTimeout(() => {
-                    shaderLoaded = true;
-                    tryRevealPage();
-                }, 100);
-            });
-            
-            setTimeout(() => {
-                if (!shaderLoaded) {
-                    shaderLoaded = true;
-                    tryRevealPage();
-                }
-            }, 5000);
-        } else {
-            shaderLoaded = true;
-            tryRevealPage();
+            body.classList.remove('loading');
+        }, 800);
+        createParticles(document.getElementById('particles'), 30);
+    }
+
+    function createParticles(container, count) {
+        if (!container) return;
+        const colors = ['var(--cyan)', 'var(--magenta)', 'var(--violet)'];
+        for (let i = 0; i < count; i++) {
+            const p = document.createElement('div');
+            p.classList.add('particle');
+            p.style.left = Math.random() * 100 + '%';
+            p.style.top = Math.random() * 100 + '%';
+            const size = Math.random() * 4 + 1;
+            p.style.width = size + 'px';
+            p.style.height = size + 'px';
+            p.style.background = colors[Math.floor(Math.random() * colors.length)];
+            p.style.animationDuration = (Math.random() * 6 + 4) + 's';
+            p.style.animationDelay = (Math.random() * 4) + 's';
+            container.appendChild(p);
         }
     }
 

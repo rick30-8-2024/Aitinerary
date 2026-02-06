@@ -2,6 +2,25 @@ let itineraryData = null;
 let isSharedView = false;
 let chatHistory = [];
 
+function createParticles(container, count) {
+    for (let i = 0; i < count; i++) {
+        const particle = document.createElement('div');
+        particle.classList.add('particle');
+        const size = Math.random() * 3 + 1;
+        const isGlow = Math.random() > 0.5;
+        particle.style.width = size + 'px';
+        particle.style.height = size + 'px';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.background = isGlow ? '#00F5FF' : '#FF00E5';
+        particle.style.boxShadow = isGlow
+            ? '0 0 6px rgba(0,245,255,0.6)'
+            : '0 0 6px rgba(255,0,229,0.6)';
+        particle.style.animationDuration = (Math.random() * 15 + 10) + 's';
+        particle.style.animationDelay = (Math.random() * 10) + 's';
+        container.appendChild(particle);
+    }
+}
+
 function toTitleCase(str) {
     if (!str) return '';
     return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
@@ -30,6 +49,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     setTimeout(() => {
         document.body.classList.remove('loading');
     }, 300);
+
+    const particleContainer = document.getElementById('particles');
+    if (particleContainer) {
+        createParticles(particleContainer, 30);
+    }
 
     const pathParts = window.location.pathname.split('/');
     isSharedView = pathParts[1] === 'shared';
