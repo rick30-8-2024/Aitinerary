@@ -420,6 +420,10 @@ body {
     justify-content: flex-start;
 }
 
+.btn-next-step1-mobile {
+    display: none;
+}
+
 .btn-prev,
 .btn-next {
     display: flex;
@@ -1640,6 +1644,10 @@ body {
         align-items: stretch;
     }
 
+    body.wizard-step-1 .create-layout {
+        padding-bottom: 16px;
+    }
+
     .form-panel {
         flex: none;
         overflow-y: visible;
@@ -1687,6 +1695,13 @@ body {
         font-size: 12px;
     }
 
+    .btn-next-step1-mobile {
+        display: flex;
+        margin-top: 16px;
+        width: 100%;
+        justify-content: center;
+    }
+
     .wizard-nav {
         position: fixed;
         bottom: 0;
@@ -1700,6 +1715,10 @@ body {
         background: rgba(13, 13, 13, 0.85);
         backdrop-filter: blur(16px);
         border-top: 1px solid rgba(155, 77, 202, 0.12);
+    }
+
+    .wizard-nav.at-step-1 {
+        display: none;
     }
 
     .card-header {
@@ -1806,6 +1825,10 @@ body {
     .create-layout {
         padding: 10px 10px 76px;
         gap: 16px;
+    }
+
+    body.wizard-step-1 .create-layout {
+        padding-bottom: 10px;
     }
 
     .page-header h1 {
@@ -2016,6 +2039,10 @@ body {
 
     .create-layout {
         padding: 8px 8px 72px;
+    }
+
+    body.wizard-step-1 .create-layout {
+        padding-bottom: 8px;
     }
 
     .card-header {
