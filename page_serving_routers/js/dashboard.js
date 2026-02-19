@@ -450,8 +450,6 @@
     function setupWizardNavigation() {
         const prevBtn = document.getElementById('btn-prev');
         const nextBtn = document.getElementById('btn-next');
-        const generateBtn = document.getElementById('generate-btn');
-        const nextStep1MobileBtn = document.getElementById('btn-next-step1-mobile');
 
         prevBtn.addEventListener('click', () => {
             if (currentStep > 1) {
@@ -464,14 +462,6 @@
                 goToStep(currentStep + 1);
             }
         });
-
-        if (nextStep1MobileBtn) {
-            nextStep1MobileBtn.addEventListener('click', () => {
-                if (validateCurrentStep()) {
-                    goToStep(currentStep + 1);
-                }
-            });
-        }
     }
 
     function goToStep(step) {
@@ -480,7 +470,6 @@
         const prevBtn = document.getElementById('btn-prev');
         const nextBtn = document.getElementById('btn-next');
         const generateBtn = document.getElementById('generate-btn');
-        const wizardNav = document.querySelector('.wizard-nav');
 
         panels.forEach(p => p.classList.remove('active'));
         document.querySelector(`.wizard-panel[data-step="${step}"]`).classList.add('active');
@@ -494,16 +483,6 @@
         currentStep = step;
 
         prevBtn.style.visibility = step === 1 ? 'hidden' : 'visible';
-
-        if (wizardNav) {
-            if (step === 1) {
-                wizardNav.classList.add('at-step-1');
-                document.body.classList.add('wizard-step-1');
-            } else {
-                wizardNav.classList.remove('at-step-1');
-                document.body.classList.remove('wizard-step-1');
-            }
-        }
 
         if (step === totalSteps) {
             nextBtn.style.display = 'none';

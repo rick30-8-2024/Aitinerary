@@ -420,10 +420,6 @@ body {
     justify-content: flex-start;
 }
 
-.btn-next-step1-mobile {
-    display: none;
-}
-
 .btn-prev,
 .btn-next {
     display: flex;
@@ -1637,15 +1633,11 @@ body {
 
     .create-layout {
         flex-direction: column-reverse;
-        padding: 16px 16px 80px;
+        padding: 16px 16px 24px;
         gap: 20px;
         overflow-y: visible;
         height: auto;
         align-items: stretch;
-    }
-
-    body.wizard-step-1 .create-layout {
-        padding-bottom: 16px;
     }
 
     .form-panel {
@@ -1695,30 +1687,11 @@ body {
         font-size: 12px;
     }
 
-    .btn-next-step1-mobile {
-        display: flex;
-        margin-top: 16px;
-        width: 100%;
-        justify-content: center;
-    }
-
     .wizard-nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 100;
         justify-content: center;
         gap: 10px;
-        padding: 12px 16px;
-        padding-bottom: max(12px, env(safe-area-inset-bottom));
-        background: rgba(13, 13, 13, 0.85);
-        backdrop-filter: blur(16px);
-        border-top: 1px solid rgba(155, 77, 202, 0.12);
-    }
-
-    .wizard-nav.at-step-1 {
-        display: none;
+        padding: 16px 16px;
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
     }
 
     .card-header {
@@ -1823,12 +1796,8 @@ body {
     }
 
     .create-layout {
-        padding: 10px 10px 76px;
+        padding: 10px 10px 20px;
         gap: 16px;
-    }
-
-    body.wizard-step-1 .create-layout {
-        padding-bottom: 10px;
     }
 
     .page-header h1 {
@@ -2038,11 +2007,7 @@ body {
     }
 
     .create-layout {
-        padding: 8px 8px 72px;
-    }
-
-    body.wizard-step-1 .create-layout {
-        padding-bottom: 8px;
+        padding: 8px 8px 16px;
     }
 
     .card-header {
