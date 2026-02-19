@@ -1,1 +1,1 @@
-"""API module for Aitinerary application."""
+"""API module for WANDERWITHAI application."""

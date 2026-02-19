@@ -1,1 +1,1 @@
-"""Configuration module for Aitinerary application."""
+"""Configuration module for WANDERWITHAI application."""

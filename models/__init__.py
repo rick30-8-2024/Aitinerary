@@ -1,1 +1,1 @@
-"""Models module for Aitinerary application."""
+"""Models module for WANDERWITHAI application."""

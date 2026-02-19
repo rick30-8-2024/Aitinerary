@@ -1,5 +1,5 @@
 /**
- * PDF Generator module for Aitinerary using pdfmake
+ * PDF Generator module for WANDERWITHAI using pdfmake
  * Generates beautifully formatted PDF itineraries with custom fonts
  */
 
@@ -251,7 +251,7 @@ const PDFGenerator = {
         return {
             columns: [
                 {
-                    text: 'Created by Aitinerary',
+                    text: 'Created by WANDERWITHAI',
                     style: 'footerText',
                     margin: [40, 0, 0, 0],
                     alignment: 'left'
@@ -814,9 +814,9 @@ const PDFGenerator = {
             },
             info: {
                 title: `${data.title} - Itinerary`,
-                author: 'Aitinerary',
+                author: 'WANDERWITHAI',
                 subject: `Travel itinerary for ${data.destination}`,
-                creator: 'Aitinerary'
+                creator: 'WANDERWITHAI'
             }
         };
 

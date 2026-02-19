@@ -183,7 +183,7 @@
                     key: orderData.key_id,
                     amount: orderData.amount * 100,
                     currency: orderData.currency,
-                    name: 'Aitinerary',
+                    name: 'WANDERWITHAI',
                     description: `Recharge ₹${orderData.amount} credits`,
                     order_id: orderData.order_id,
                     handler: async function (response) {

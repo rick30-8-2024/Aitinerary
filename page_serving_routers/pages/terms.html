@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms & Conditions - WANDERWITHAI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --purple: #9b4dca;
+            --purple-dim: rgba(155, 77, 202, 0.15);
+            --neon-yellow: #eaff00;
+            --dark-bg: #0a0a0c;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(155, 77, 202, 0.25);
+            --text: #ffffff;
+            --muted: #aaaaaa;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% -20%, #2a104a 0%, #0a0a0c 80%);
+            z-index: -1;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 8%;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 10, 12, 0.85);
+            backdrop-filter: blur(16px);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .logo span { color: var(--neon-yellow); }
+
+        .btn-nav {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 10px 22px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-nav:hover {
+            color: var(--neon-yellow);
+            border-color: rgba(234, 255, 0, 0.4);
+        }
+
+        .policy-hero {
+            padding: 80px 8% 40px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .policy-tag {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            letter-spacing: 4px;
+            color: var(--purple);
+            margin-bottom: 20px;
+        }
+
+        .policy-hero h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.8rem, 5vw, 3.2rem);
+            margin-bottom: 16px;
+        }
+
+        .policy-hero h1 span { color: var(--neon-yellow); }
+
+        .policy-meta {
+            color: var(--muted);
+            font-size: 0.88rem;
+            letter-spacing: 0.5px;
+        }
+
+        .policy-body {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 72px 8%;
+        }
+
+        .policy-section {
+            margin-bottom: 56px;
+        }
+
+        .section-num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.62rem;
+            letter-spacing: 3px;
+            color: var(--purple);
+            margin-bottom: 10px;
+        }
+
+        .policy-section h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.15rem;
+            color: var(--neon-yellow);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .policy-section p {
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.85;
+            margin-bottom: 16px;
+        }
+
+        .policy-section ul {
+            list-style: none;
+            margin: 16px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .policy-section ul li {
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.75;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .policy-section ul li::before {
+            content: '—';
+            position: absolute;
+            left: 0;
+            color: var(--purple);
+        }
+
+        .policy-section a {
+            color: var(--neon-yellow);
+            text-decoration: none;
+        }
+
+        .policy-section a:hover {
+            text-decoration: underline;
+        }
+
+        .highlight-block {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--purple);
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin: 24px 0;
+        }
+
+        .highlight-block p {
+            margin-bottom: 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 3rem;
+            border-top: 1px solid var(--border);
+            color: #444;
+            font-size: 0.8rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 28px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .footer-links a {
+            color: #555;
+            text-decoration: none;
+            font-size: 0.78rem;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover { color: var(--neon-yellow); }
+
+        @media (max-width: 768px) {
+            nav { padding: 1rem 5%; }
+            .logo { font-size: 1.1rem; }
+            .policy-hero { padding: 56px 5% 32px; }
+            .policy-body { padding: 48px 5%; }
+        }
+
+        @media (max-width: 480px) {
+            nav { padding: 0.9rem 4%; }
+            .policy-hero { padding: 44px 4% 28px; }
+            .policy-body { padding: 36px 4%; }
+            .policy-section { margin-bottom: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <nav>
+        <a href="/" class="logo">WANDER<span>WITH</span>AI</a>
+        <a href="/" class="btn-nav">← Back</a>
+    </nav>
+
+    <div class="policy-hero">
+        <p class="policy-tag">LEGAL</p>
+        <h1>Terms &amp; <span>Conditions</span></h1>
+        <p class="policy-meta">Last updated: February 2026 &nbsp;·&nbsp; Effective immediately upon use</p>
+    </div>
+
+    <div class="policy-body">
+
+        <div class="highlight-block">
+            <p>By accessing or using WANDERWITHAI, you agree to be bound by these Terms & Conditions. Please read them carefully before using our platform.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">01</p>
+            <h2>Acceptance of Terms</h2>
+            <p>These Terms & Conditions ("Terms") constitute a legally binding agreement between you ("User") and WANDERWITHAI ("we", "us", or "our"). By creating an account, purchasing credits, or using any features of our platform, you acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
+            <p>If you do not agree to these Terms, you must not use our platform.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">02</p>
+            <h2>Description of Service</h2>
+            <p>WANDERWITHAI is an AI-powered travel planning platform that allows users to generate itineraries from YouTube travel videos. Our services include:</p>
+            <ul>
+                <li>AI-powered extraction of travel information from YouTube URLs</li>
+                <li>Generation of day-by-day travel itineraries with mapped coordinates</li>
+                <li>PDF export and itinerary sharing functionality</li>
+                <li>Dashboard for managing saved itineraries</li>
+            </ul>
+            <p>We reserve the right to modify, suspend, or discontinue any part of the service at any time with or without notice.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">03</p>
+            <h2>User Accounts</h2>
+            <p>To use our platform, you must register for an account. You are responsible for:</p>
+            <ul>
+                <li>Maintaining the confidentiality of your account credentials</li>
+                <li>All activity that occurs under your account</li>
+                <li>Providing accurate and up-to-date information during registration</li>
+                <li>Notifying us immediately of any unauthorized use of your account</li>
+            </ul>
+            <p>We reserve the right to terminate accounts that violate these Terms or engage in fraudulent activity.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">04</p>
+            <h2>Credits &amp; Payments</h2>
+            <p>WANDERWITHAI operates on a credit-based system. Credits must be purchased to generate itineraries. The following conditions apply:</p>
+            <ul>
+                <li>The minimum recharge amount is ₹599</li>
+                <li>Each itinerary generation costs ₹599 in credits</li>
+                <li>Credits do not expire and remain valid as long as your account is active</li>
+                <li>All payments are processed securely via Razorpay</li>
+                <li>Prices are subject to change with prior notice</li>
+            </ul>
+            <p>Credits are non-transferable and cannot be converted back to cash except as described in our Refund Policy.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">05</p>
+            <h2>Acceptable Use</h2>
+            <p>You agree not to use WANDERWITHAI to:</p>
+            <ul>
+                <li>Violate any applicable laws or regulations</li>
+                <li>Submit URLs containing harmful, illegal, or infringing content</li>
+                <li>Attempt to reverse-engineer, scrape, or exploit our AI systems</li>
+                <li>Create multiple accounts to abuse free credits or promotions</li>
+                <li>Resell, sublicense, or commercialize generated itineraries without permission</li>
+                <li>Interfere with the platform's infrastructure or security</li>
+            </ul>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">06</p>
+            <h2>Intellectual Property</h2>
+            <p>All content, branding, design, and software on WANDERWITHAI is the exclusive property of WANDERWITHAI. Generated itineraries are provided for personal, non-commercial use only.</p>
+            <p>You retain ownership of any data you submit (YouTube URLs, preferences), but you grant us a non-exclusive license to process that data to provide the service.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">07</p>
+            <h2>Disclaimer of Warranties</h2>
+            <p>WANDERWITHAI is provided "as is" without warranties of any kind. We do not guarantee the accuracy, completeness, or reliability of AI-generated itineraries. Travel information may be outdated or inaccurate always verify critical details (visas, bookings, operating hours) independently before your trip.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">08</p>
+            <h2>Limitation of Liability</h2>
+            <p>To the maximum extent permitted by law, WANDERWITHAI shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the platform, including but not limited to travel losses, missed bookings, or reliance on AI-generated content.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">09</p>
+            <h2>Changes to Terms</h2>
+            <p>We may update these Terms at any time. Continued use of the platform after changes are posted constitutes acceptance of the updated Terms. We will notify users of material changes via email or in-app notification.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">10</p>
+            <h2>Contact</h2>
+            <p>For questions about these Terms, please contact us at <a href="mailto:support@wanderwithai.com">support@wanderwithai.com</a>.</p>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>&copy; 2026 wanderwithai.com | The Future of Exploration</p>
+        <div class="footer-links">
+            <a href="/#pricing">Pricing</a>
+            <a href="/terms">Terms &amp; Conditions</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/refund">Refund Policy</a>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     MONGODB_URL: str = "mongodb://localhost:27017"
-    DATABASE_NAME: str = "aitinerary"
+    DATABASE_NAME: str = "wanderwithai"
     
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL_NAME: str = "gemini-3-flash-preview"
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     ITINERARY_COST: int = 599
     MIN_RECHARGE_AMOUNT: int = 599
     
-    APP_NAME: str = "Aitinerary"
+    APP_NAME: str = "WANDERWITHAI"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     

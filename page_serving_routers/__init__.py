@@ -1,1 +1,1 @@
-"""Page serving routers module for Aitinerary application."""
+"""Page serving routers module for WANDERWITHAI application."""

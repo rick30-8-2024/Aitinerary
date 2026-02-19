@@ -1,1 +1,1 @@
-"""Services module for Aitinerary application."""
+"""Services module for WANDERWITHAI application."""

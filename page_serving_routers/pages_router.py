@@ -16,8 +16,8 @@ PAGES_DIR = Path(__file__).parent / "pages"
 
 @router.get("/")
 async def root():
-    """Redirect root to login page."""
-    return RedirectResponse(url="/login", status_code=302)
+    """Serve the landing page."""
+    return FileResponse(PAGES_DIR / "landing.html")
 
 
 @router.get("/login")
@@ -42,3 +42,21 @@ async def itinerary_page(itinerary_id: str):
 async def shared_itinerary_page(share_code: str):
     """Serve the shared itinerary view page."""
     return FileResponse(PAGES_DIR / "itinerary.html")
+
+
+@router.get("/terms")
+async def terms_page():
+    """Serve the Terms & Conditions page."""
+    return FileResponse(PAGES_DIR / "terms.html")
+
+
+@router.get("/privacy")
+async def privacy_page():
+    """Serve the Privacy Policy page."""
+    return FileResponse(PAGES_DIR / "privacy.html")
+
+
+@router.get("/refund")
+async def refund_page():
+    """Serve the Refund Policy page."""
+    return FileResponse(PAGES_DIR / "refund.html")

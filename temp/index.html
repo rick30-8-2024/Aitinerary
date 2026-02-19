@@ -3,362 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Srii Paradiise — Dark Futuristic</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <title>Wander with AI | Video to Itinerary</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --purple: #9b4dca;
+            --neon-yellow: #eaff00;
+            --dark-bg: #0a0a0c;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(155, 77, 202, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Animated Background */
+        .bg-glow {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% -20%, #2a104a 0%, #0a0a0c 80%);
+            z-index: -1;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2rem 8%;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+        }
+
+        .logo span { color: var(--neon-yellow); }
+
+        /* Hero Section */
+        header {
+            padding: 100px 8% 50px;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2rem, 6vw, 4.5rem);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .neon-text {
+            color: var(--neon-yellow);
+            text-shadow: 0 0 20px rgba(234, 255, 0, 0.6);
+        }
+
+        .hero-p {
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            font-size: 1.2rem;
+            color: #aaa;
+        }
+
+        /* Input Area */
+        .input-group {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 100px;
+            display: flex;
+            max-width: 650px;
+            margin: 0 auto;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        input {
+            background: transparent;
+            border: none;
+            padding: 15px 25px;
+            color: white;
+            flex: 1;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        button {
+            background: var(--purple);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(155, 77, 202, 0.4);
+        }
+
+        button:hover {
+            background: var(--neon-yellow);
+            color: black;
+            transform: scale(1.05);
+            box-shadow: 0 0 25px var(--neon-yellow);
+        }
+
+        /* New AI Engine Section */
+        .engine-section {
+            background: linear-gradient(90deg, transparent, rgba(155, 77, 202, 0.1), transparent);
+            padding: 60px 8%;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            margin: 40px 0;
+        }
+
+        .engine-stats {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item h2 {
+            font-family: 'Orbitron';
+            color: var(--neon-yellow);
+            font-size: 2.5rem;
+        }
+
+        .stat-item p {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.8rem;
+            color: #fff;
+        }
+
+        /* Features Grid */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 40px 8%;
+        }
+
+        .card {
+            background: var(--glass);
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            transition: 0.4s;
+        }
+
+        .card:hover {
+            border-color: var(--neon-yellow);
+            transform: translateY(-10px);
+            background: rgba(155, 77, 202, 0.05);
+        }
+
+        .card h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-yellow);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        /* AI Section */
+        .ai-partner {
+            display: flex;
+            align-items: center;
+            gap: 60px;
+            padding: 100px 8%;
+            flex-wrap: wrap;
+        }
+
+        .ai-info { flex: 1; min-width: 320px; }
+        .ai-info h2 { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; margin-bottom: 20px; }
+        
+        .chat-container {
+            flex: 1;
+            min-width: 320px;
+            background: #111;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 25px;
+        }
+
+        .chat-bubble {
+            padding: 15px 20px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            max-width: 85%;
+            font-size: 0.9rem;
+        }
+
+        .ai-msg { background: var(--purple); color: white; align-self: flex-start; }
+        .user-msg { background: rgba(255,255,255,0.1); margin-left: auto; text-align: right; }
+
+        footer {
+            text-align: center;
+            padding: 4rem;
+            border-top: 1px solid var(--border);
+            color: #555;
+            font-size: 0.8rem;
+        }
+
+        .coming-soon-tag {
+            display: inline-block;
+            margin-top: 20px;
+            color: var(--neon-yellow);
+            font-family: 'Orbitron';
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+        }
+    </style>
 </head>
 <body>
 
-    <div class="grid-bg"></div>
-    <div class="scan-line"></div>
+    <div class="bg-glow"></div>
 
-    <nav class="nav">
-        <a href="#" class="nav-logo">
-            <span class="logo-bracket">[</span> SRII PARADIISE <span class="logo-bracket">]</span>
-        </a>
-        <div class="nav-links" id="navLinks">
-            <a href="#about">About</a>
-            <a href="#divisions">Divisions</a>
-            <a href="#global">Global</a>
-            <a href="#team">Team</a>
-            <a href="#connect" class="nav-cta">Connect</a>
+    <nav>
+        <div class="logo">WANDER<span>WITH</span>AI</div>
+        <div>
+            <span style="color: var(--neon-yellow); font-size: 0.8rem; font-family: 'Orbitron';">BETA ACCESS OPENING SOON</span>
         </div>
-        <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
-            <span></span>
-            <span></span>
-        </button>
     </nav>
 
-    <section class="hero">
-        <div class="hero-particles" id="particles"></div>
-        <div class="hero-content">
-            <div class="hero-status">
-                <span class="status-dot"></span>
-                <span class="status-text">SYSTEM ONLINE</span>
+    <header>
+        <h1>VIDEO TO <span class="neon-text">ITINERARY</span></h1>
+        <p class="hero-p">Paste a YouTube URL or upload a travel vlog. Our AI extracts every location, hidden gem, and logistics detail in seconds.</p>
+        
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="Paste video link here (YouTube, Vimeo, etc.)">
+            <button onclick="handleAnalyze()">Analyze</button>
+        </div>
+        <div class="coming-soon-tag">COMING SOON • AI-POWERED • ZERO EFFORT</div>
+    </header>
+
+    <section class="engine-section">
+        <div class="engine-stats">
+            <div class="stat-item">
+                <h2>5</h2>
+                <p>Advanced AI Models Linked</p>
             </div>
-            <h1 class="hero-title">
-                <span class="title-line">THE FUTURE OF</span>
-                <span class="title-line title-glow">LUXURY</span>
-                <span class="title-line title-sub">HOSPITALITY & ENTERTAINMENT</span>
-            </h1>
-            <p class="hero-desc">A multinational conglomerate redefining premium experiences across 6 countries with cutting-edge innovation and timeless elegance.</p>
-            <div class="hero-actions">
-                <a href="#divisions" class="btn btn-neon">Explore Divisions</a>
-                <a href="#connect" class="btn btn-ghost">Contact Us →</a>
+            <div class="stat-item">
+                <h2>500M+</h2>
+                <p>Local & Int'l Data Points</p>
             </div>
-            <div class="hero-metrics">
-                <div class="metric">
-                    <span class="metric-val" data-count="6">0</span>
-                    <span class="metric-label">Nations</span>
-                </div>
-                <div class="metric-sep">|</div>
-                <div class="metric">
-                    <span class="metric-val" data-count="2">0</span>
-                    <span class="metric-label">Divisions</span>
-                </div>
-                <div class="metric-sep">|</div>
-                <div class="metric">
-                    <span class="metric-val" data-count="12">0</span>
-                    <span class="metric-label">Properties</span>
-                </div>
-                <div class="metric-sep">|</div>
-                <div class="metric">
-                    <span class="metric-val" data-count="1000">0</span>
-                    <span class="metric-label">Guests+</span>
-                </div>
+            <div class="stat-item">
+                <h2>∞</h2>
+                <p>Global Understanding</p>
             </div>
         </div>
-        <div class="hero-scroll-indicator">
-            <div class="scroll-line"></div>
-            <span>SCROLL</span>
+        <p style="margin-top: 25px; font-size: 0.9rem; color: #9b4dca; font-weight: bold; letter-spacing: 1px;">POWERED BY THE MULTI-ENGINE ARCHITECTURE</p>
+    </section>
+
+    <div class="grid-container">
+        <div class="card">
+            <h3>Universal Video Extraction</h3>
+            <p>Turn any YouTube URL or video file into a step-by-step travel plan with mapped coordinates.</p>
+        </div>
+        <div class="card">
+            <h3>Travel Tracker</h3>
+            <p>Visualize your progress. Keep track of where you've conquered and what's remaining on your map.</p>
+        </div>
+        <div class="card">
+            <h3>Wishlist Tracker</h3>
+            <p>Save dream locations directly from your favorite vlogs to your organized bucket list.</p>
+        </div>
+    </div>
+
+    <section class="ai-partner">
+        <div class="ai-info">
+            <h2>Your Infinite <br><span class="neon-text">Travel Partner</span></h2>
+            <p>Solo travel is about freedom, not loneliness. WanderAI stays in the background until you need it. A constant AI that won't break your immersion.</p>
+            <br>
+            <p><strong>Confused about your next trip?</strong> Ask WanderAI based on your specific mood and travel history.</p>
+        </div>
+        <div class="chat-container">
+            <div class="chat-bubble user-msg">Where should I go next?</div>
+            <div class="chat-bubble ai-msg">Based on your love for neon cities and hiking, Tokyo or Seoul would be perfect. I can map out a 7-day route from Shinjuku to Mt. Fuji now. Shall I?</div>
         </div>
     </section>
 
-    <section id="about" class="about">
-        <div class="section-container">
-            <div class="about-grid">
-                <div class="about-left" data-reveal="left">
-                    <span class="section-label">// ABOUT US</span>
-                    <h2 class="section-heading">Redefining <span class="text-cyan">Paradise</span></h2>
-                    <p>Srii Paradiise is a multinational conglomerate operating at the intersection of hospitality and entertainment. We create immersive, world-class experiences that push boundaries and set new standards in luxury.</p>
-                    <p>With presence across the United States, Singapore, Hong Kong, Switzerland, India, and Cyprus — we blend cultural richness with futuristic innovation.</p>
-                    <div class="about-tags">
-                        <span class="tag">Hospitality</span>
-                        <span class="tag">Entertainment</span>
-                        <span class="tag">Innovation</span>
-                        <span class="tag">Global</span>
-                    </div>
-                </div>
-                <div class="about-right" data-reveal="right">
-                    <div class="data-card">
-                        <div class="data-card-header">
-                            <span class="dc-indicator"></span>
-                            <span>COMPANY_PROFILE.dat</span>
-                        </div>
-                        <div class="data-card-body">
-                            <div class="data-row">
-                                <span class="data-key">Entity</span>
-                                <span class="data-val">Srii Paradiise International</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-key">Domain</span>
-                                <span class="data-val">sriparadise.ind</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-key">HQ</span>
-                                <span class="data-val">Singapore</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-key">Sectors</span>
-                                <span class="data-val">Hotels · Studios</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-key">Reach</span>
-                                <span class="data-val">6 Countries</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-key">Status</span>
-                                <span class="data-val data-active">● ACTIVE</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="divisions" class="divisions">
-        <div class="section-container">
-            <div class="section-header-center" data-reveal="up">
-                <span class="section-label">// OUR DIVISIONS</span>
-                <h2 class="section-heading">Two Pillars of <span class="text-magenta">Excellence</span></h2>
-            </div>
-            <div class="division-panels">
-                <div class="division-panel" data-reveal="left">
-                    <div class="panel-glow panel-glow-cyan"></div>
-                    <div class="panel-number">01</div>
-                    <div class="panel-icon">🏨</div>
-                    <h3>Hotels & Resorts</h3>
-                    <p>Srii Paradiise International Hotels & Resorts curates luxurious sanctuaries across the globe. From beachfront villas to alpine retreats, every property is engineered for extraordinary comfort and unforgettable moments.</p>
-                    <div class="panel-features">
-                        <span>Boutique Hotels</span>
-                        <span>Beach Resorts</span>
-                        <span>Fine Dining</span>
-                        <span>Wellness Spas</span>
-                    </div>
-                    <div class="panel-line"></div>
-                </div>
-                <div class="division-panel" data-reveal="right">
-                    <div class="panel-glow panel-glow-magenta"></div>
-                    <div class="panel-number">02</div>
-                    <div class="panel-icon">🎬</div>
-                    <h3>International Studios</h3>
-                    <p>Srii Paradiise International Studios is a creative powerhouse producing compelling content that bridges cultures. From blockbuster films to digital-first originals, we tell stories that resonate worldwide.</p>
-                    <div class="panel-features">
-                        <span>Film Production</span>
-                        <span>Television</span>
-                        <span>Music</span>
-                        <span>Digital Content</span>
-                    </div>
-                    <div class="panel-line"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="global" class="global">
-        <div class="section-container">
-            <div class="section-header-center" data-reveal="up">
-                <span class="section-label">// GLOBAL PRESENCE</span>
-                <h2 class="section-heading">Across <span class="text-cyan">6</span> Nations</h2>
-            </div>
-            <div class="globe-grid">
-                <div class="globe-card" data-reveal="up">
-                    <div class="gc-accent gc-accent-1"></div>
-                    <span class="gc-code">SG</span>
-                    <h4>Singapore</h4>
-                    <p>Global Headquarters</p>
-                </div>
-                <div class="globe-card" data-reveal="up">
-                    <div class="gc-accent gc-accent-2"></div>
-                    <span class="gc-code">US</span>
-                    <h4>United States</h4>
-                    <p>Premium Properties</p>
-                </div>
-                <div class="globe-card" data-reveal="up">
-                    <div class="gc-accent gc-accent-3"></div>
-                    <span class="gc-code">HK</span>
-                    <h4>Hong Kong</h4>
-                    <p>Urban Luxury</p>
-                </div>
-                <div class="globe-card" data-reveal="up">
-                    <div class="gc-accent gc-accent-4"></div>
-                    <span class="gc-code">CH</span>
-                    <h4>Switzerland</h4>
-                    <p>Alpine Retreats</p>
-                </div>
-                <div class="globe-card" data-reveal="up">
-                    <div class="gc-accent gc-accent-5"></div>
-                    <span class="gc-code">IN</span>
-                    <h4>India</h4>
-                    <p>Heritage Collection</p>
-                </div>
-                <div class="globe-card" data-reveal="up">
-                    <div class="gc-accent gc-accent-6"></div>
-                    <span class="gc-code">CY</span>
-                    <h4>Cyprus</h4>
-                    <p>Mediterranean Gems</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="quote-band">
-        <div class="quote-inner" data-reveal="up">
-            <div class="quote-marks">&lt;/&gt;</div>
-            <blockquote>Innovation is our compass. Every hotel we build, every story we tell — it's all about pushing luxury into the future.</blockquote>
-            <cite>— Srii Paradiise Vision</cite>
-        </div>
-    </section>
-
-    <section id="team" class="team">
-        <div class="section-container">
-            <div class="section-header-center" data-reveal="up">
-                <span class="section-label">// LEADERSHIP</span>
-                <h2 class="section-heading">The <span class="text-magenta">Architects</span></h2>
-            </div>
-            <div class="team-grid">
-                <div class="team-card" data-reveal="up">
-                    <div class="tc-image" style="background-image: url('https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400')"></div>
-                    <div class="tc-info">
-                        <div class="tc-role-badge">Chairman</div>
-                        <h3>Mr. Srinivas Rao</h3>
-                        <p>Visionary founder and strategic architect behind Srii Paradiise's global expansion.</p>
-                    </div>
-                    <div class="tc-border"></div>
-                </div>
-                <div class="team-card" data-reveal="up">
-                    <div class="tc-image" style="background-image: url('https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400')"></div>
-                    <div class="tc-info">
-                        <div class="tc-role-badge">CEO</div>
-                        <h3>Mr. Suhas Medam</h3>
-                        <p>Transformative leader driving innovation and operational excellence across all divisions.</p>
-                    </div>
-                    <div class="tc-border"></div>
-                </div>
-                <div class="team-card" data-reveal="up">
-                    <div class="tc-image" style="background-image: url('https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400')"></div>
-                    <div class="tc-info">
-                        <div class="tc-role-badge">SVP</div>
-                        <h3>Mr. Arjun Medam</h3>
-                        <p>Strategic powerhouse overseeing international operations and business development.</p>
-                    </div>
-                    <div class="tc-border"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="connect" class="connect">
-        <div class="section-container">
-            <div class="connect-grid">
-                <div class="connect-info" data-reveal="left">
-                    <span class="section-label">// CONNECT</span>
-                    <h2 class="section-heading">Get in <span class="text-cyan">Touch</span></h2>
-                    <p class="connect-desc">Ready to experience the future of luxury? Reach out to us for partnerships, bookings, or inquiries.</p>
-                    <div class="connect-channels">
-                        <div class="channel">
-                            <span class="channel-label">EMAIL_</span>
-                            <a href="mailto:arjun@sriiparadiise.com">arjun@sriiparadiise.com</a>
-                        </div>
-                        <div class="channel">
-                            <span class="channel-label">PHONE_</span>
-                            <a href="tel:+6598982570">+65 9898 2570</a>
-                        </div>
-                        <div class="channel">
-                            <span class="channel-label">LOCATION_</span>
-                            <span>10 UBI Crescent, #05-60<br>UBI Techpark, Singapore 408564</span>
-                        </div>
-                    </div>
-                </div>
-                <form class="connect-form" id="connectForm" data-reveal="right">
-                    <div class="form-header">
-                        <span class="dc-indicator"></span>
-                        <span>NEW_INQUIRY.exe</span>
-                    </div>
-                    <div class="form-body">
-                        <div class="form-row">
-                            <div class="form-field">
-                                <label>NAME_</label>
-                                <input type="text" required>
-                            </div>
-                            <div class="form-field">
-                                <label>EMAIL_</label>
-                                <input type="email" required>
-                            </div>
-                        </div>
-                        <div class="form-field">
-                            <label>SUBJECT_</label>
-                            <select required>
-                                <option value="" disabled selected>Select inquiry type</option>
-                                <option value="hotels">Hotels & Resorts</option>
-                                <option value="studios">International Studios</option>
-                                <option value="partnership">Business Partnership</option>
-                                <option value="careers">Careers</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label>MESSAGE_</label>
-                            <textarea rows="4" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-neon btn-full">TRANSMIT MESSAGE</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </section>
-
-    <footer class="footer">
-        <div class="footer-inner">
-            <div class="footer-top">
-                <div class="footer-brand">
-                    <span class="logo-bracket">[</span> SRII PARADIISE <span class="logo-bracket">]</span>
-                    <p>Multinational conglomerate in hospitality & entertainment. Six countries. Infinite possibilities.</p>
-                </div>
-                <div class="footer-cols">
-                    <div class="footer-col">
-                        <h4>DIVISIONS_</h4>
-                        <a href="#">Hotels & Resorts</a>
-                        <a href="#">International Studios</a>
-                    </div>
-                    <div class="footer-col">
-                        <h4>COMPANY_</h4>
-                        <a href="#">About</a>
-                        <a href="#">Leadership</a>
-                        <a href="#">Careers</a>
-                        <a href="#">Newsroom</a>
-                    </div>
-                    <div class="footer-col">
-                        <h4>REACH_</h4>
-                        <a href="#">Singapore</a>
-                        <a href="#">USA</a>
-                        <a href="#">Hong Kong</a>
-                        <a href="#">Switzerland</a>
-                        <a href="#">India</a>
-                        <a href="#">Cyprus</a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 Srii Paradiise International</p>
-                <p>sriparadise.ind</p>
-            </div>
-        </div>
+    <footer>
+        <p>&copy; 2026 wanderwithai.com | The Future of Exploration</p>
     </footer>
 
-    <script src="script.js"></script>
+    <script>
+        function handleAnalyze() {
+            const input = document.getElementById('urlInput');
+            if(input.value.trim() === "") {
+                alert("Please enter a valid video URL.");
+                return;
+            }
+            const btn = document.querySelector('button');
+            btn.innerText = "Connecting to AIs...";
+            setTimeout(() => {
+                alert("Wander with AI is currently in early development. We've saved your interest for our launch!");
+                btn.innerText = "Analyze";
+                input.value = "";
+            }, 1500);
+        }
+    </script>
 </body>
 </html>

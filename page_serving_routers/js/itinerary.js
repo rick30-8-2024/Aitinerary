@@ -554,7 +554,7 @@ function renderDays() {
     container.innerHTML = itineraryData.days.map((day, dayIdx) => `
         <div class="day-card" id="day-${day.day_number}" data-day-idx="${dayIdx}">
             <div class="day-header">
-                <h2><span>Day ${day.day_number}</span> — <span class="day-theme-text" data-edit="day-theme" data-day="${dayIdx}">${escapeHtml(day.theme)}</span></h2>
+                <h2><span>Day ${day.day_number}</span> <span class="day-theme-text" data-edit="day-theme" data-day="${dayIdx}">${escapeHtml(day.theme)}</span></h2>
                 <span class="day-cost">${formatCurrency(day.total_estimated_cost)}</span>
             </div>
             ${day.summary ? `<div class="day-summary" data-edit="day-summary" data-day="${dayIdx}">${escapeHtml(day.summary)}</div>` : ''}
@@ -573,7 +573,7 @@ function renderDays() {
 function formatActivityTitle(act) {
     const placeName = toTitleCase(act.place_name);
     if (act.event_name) {
-        return `${placeName} — ${toTitleCase(act.event_name)}`;
+        return `${placeName} ${toTitleCase(act.event_name)}`;
     }
     return placeName;
 }

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refund Policy - WANDERWITHAI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --purple: #9b4dca;
+            --purple-dim: rgba(155, 77, 202, 0.15);
+            --neon-yellow: #eaff00;
+            --dark-bg: #0a0a0c;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(155, 77, 202, 0.25);
+            --text: #ffffff;
+            --muted: #aaaaaa;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% -20%, #2a104a 0%, #0a0a0c 80%);
+            z-index: -1;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 8%;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 10, 12, 0.85);
+            backdrop-filter: blur(16px);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .logo span { color: var(--neon-yellow); }
+
+        .btn-nav {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 10px 22px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-nav:hover {
+            color: var(--neon-yellow);
+            border-color: rgba(234, 255, 0, 0.4);
+        }
+
+        .policy-hero {
+            padding: 80px 8% 40px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .policy-tag {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            letter-spacing: 4px;
+            color: var(--purple);
+            margin-bottom: 20px;
+        }
+
+        .policy-hero h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.8rem, 5vw, 3.2rem);
+            margin-bottom: 16px;
+        }
+
+        .policy-hero h1 span { color: var(--neon-yellow); }
+
+        .policy-meta {
+            color: var(--muted);
+            font-size: 0.88rem;
+            letter-spacing: 0.5px;
+        }
+
+        .policy-body {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 72px 8%;
+        }
+
+        .policy-section {
+            margin-bottom: 56px;
+        }
+
+        .section-num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.62rem;
+            letter-spacing: 3px;
+            color: var(--purple);
+            margin-bottom: 10px;
+        }
+
+        .policy-section h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.15rem;
+            color: var(--neon-yellow);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .policy-section p {
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.85;
+            margin-bottom: 16px;
+        }
+
+        .policy-section ul {
+            list-style: none;
+            margin: 16px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .policy-section ul li {
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.75;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .policy-section ul li::before {
+            content: '—';
+            position: absolute;
+            left: 0;
+            color: var(--purple);
+        }
+
+        .policy-section a {
+            color: var(--neon-yellow);
+            text-decoration: none;
+        }
+
+        .policy-section a:hover { text-decoration: underline; }
+
+        .highlight-block {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--purple);
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin: 24px 0;
+        }
+
+        .highlight-block p { margin-bottom: 0; }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .scenario-card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .scenario-card.eligible {
+            border-color: rgba(0, 200, 100, 0.25);
+        }
+
+        .scenario-card.not-eligible {
+            border-color: rgba(200, 50, 50, 0.25);
+        }
+
+        .scenario-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 50px;
+        }
+
+        .scenario-card.eligible .scenario-label {
+            color: #00c864;
+            background: rgba(0, 200, 100, 0.1);
+            border: 1px solid rgba(0, 200, 100, 0.2);
+        }
+
+        .scenario-card.not-eligible .scenario-label {
+            color: #ff6b6b;
+            background: rgba(200, 50, 50, 0.1);
+            border: 1px solid rgba(200, 50, 50, 0.2);
+        }
+
+        .scenario-card ul {
+            margin: 0;
+        }
+
+        .scenario-card ul li {
+            font-size: 0.88rem;
+        }
+
+        .scenario-card.eligible ul li::before { color: #00c864; }
+        .scenario-card.not-eligible ul li::before { color: #ff6b6b; }
+
+        .process-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .step {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .step-num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: var(--neon-yellow);
+            font-weight: bold;
+            min-width: 32px;
+            padding-top: 2px;
+        }
+
+        .step-content h4 {
+            color: #fff;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .step-content p {
+            margin-bottom: 0;
+            font-size: 0.88rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 3rem;
+            border-top: 1px solid var(--border);
+            color: #444;
+            font-size: 0.8rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 28px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .footer-links a {
+            color: #555;
+            text-decoration: none;
+            font-size: 0.78rem;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover { color: var(--neon-yellow); }
+
+        @media (max-width: 768px) {
+            nav { padding: 1rem 5%; }
+            .logo { font-size: 1.1rem; }
+            .policy-hero { padding: 56px 5% 32px; }
+            .policy-body { padding: 48px 5%; }
+            .scenario-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 480px) {
+            nav { padding: 0.9rem 4%; }
+            .policy-hero { padding: 44px 4% 28px; }
+            .policy-body { padding: 36px 4%; }
+            .policy-section { margin-bottom: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <nav>
+        <a href="/" class="logo">WANDER<span>WITH</span>AI</a>
+        <a href="/" class="btn-nav">← Back</a>
+    </nav>
+
+    <div class="policy-hero">
+        <p class="policy-tag">LEGAL</p>
+        <h1>Refund <span>Policy</span></h1>
+        <p class="policy-meta">Last updated: February 2026 &nbsp;·&nbsp; We strive to be fair and transparent</p>
+    </div>
+
+    <div class="policy-body">
+
+        <div class="highlight-block">
+            <p>WANDERWITHAI operates on a prepaid credit system. Because AI processing resources are consumed at the point of generation, our refund policy is specific. Please read it carefully before purchasing credits.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">01</p>
+            <h2>How Credits Work</h2>
+            <p>Credits are the currency of WANDERWITHAI. When you recharge your account, credits are added to your balance. Each itinerary generation deducts the corresponding credit amount (₹599 per itinerary). Credits are non-transferable between accounts.</p>
+            <p>Credits do not expire as long as your account remains active. There is no subscription or recurring charge.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">02</p>
+            <h2>Refund Eligibility</h2>
+            <p>We consider refund requests on a case-by-case basis. The scenarios below outline what is typically eligible:</p>
+            <div class="scenario-grid">
+                <div class="scenario-card eligible">
+                    <span class="scenario-label">✓ ELIGIBLE</span>
+                    <ul>
+                        <li>Duplicate payment charged for a single transaction</li>
+                        <li>Credits not added after a confirmed payment</li>
+                        <li>Technical error caused generation to fail and credits were deducted</li>
+                        <li>Unauthorised transaction on your account (reported within 7 days)</li>
+                    </ul>
+                </div>
+                <div class="scenario-card not-eligible">
+                    <span class="scenario-label">✗ NOT ELIGIBLE</span>
+                    <ul>
+                        <li>Successfully generated itinerary you chose not to use</li>
+                        <li>Dissatisfaction with the quality of AI output</li>
+                        <li>Unused credits (credits do not expire)</li>
+                        <li>Change of mind after purchase</li>
+                        <li>Requests made more than 7 days after the transaction</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">03</p>
+            <h2>Failed Generation &amp; Credit Recovery</h2>
+            <p>If an itinerary generation fails due to a technical error on our end (server error, AI processing failure, unsupported video), we will automatically restore the deducted credits to your account within 24 hours.</p>
+            <p>If the credits are not restored automatically, please contact us with your account email and the approximate time of the failed generation, and we will resolve it promptly.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">04</p>
+            <h2>How to Request a Refund</h2>
+            <p>To submit a refund request, follow these steps:</p>
+            <div class="process-steps">
+                <div class="step">
+                    <span class="step-num">01</span>
+                    <div class="step-content">
+                        <h4>Email us</h4>
+                        <p>Send your request to <a href="mailto:support@wanderwithai.com">support@wanderwithai.com</a> with the subject line "Refund Request".</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-num">02</span>
+                    <div class="step-content">
+                        <h4>Include details</h4>
+                        <p>Provide your registered email address, the transaction amount, the Razorpay payment ID (from your receipt), and a description of the issue.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-num">03</span>
+                    <div class="step-content">
+                        <h4>Await review</h4>
+                        <p>We will acknowledge your request within 2 business days and complete our review within 5–7 business days.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-num">04</span>
+                    <div class="step-content">
+                        <h4>Receive your refund</h4>
+                        <p>Approved refunds are processed back to the original payment method within 5–10 business days, depending on your bank or payment provider.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">05</p>
+            <h2>Dispute Resolution</h2>
+            <p>If you are unsatisfied with our refund decision, you may escalate the matter through Razorpay's dispute resolution process or your bank's chargeback procedure. We will cooperate fully with any legitimate dispute investigation.</p>
+            <p>We strongly encourage reaching out to us first we are committed to resolving issues fairly and efficiently.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">06</p>
+            <h2>Policy Changes</h2>
+            <p>We reserve the right to modify this Refund Policy at any time. Changes will be posted on this page with an updated date. Continued use of the platform after changes constitutes acceptance of the revised policy.</p>
+        </div>
+
+        <div class="policy-section">
+            <p class="section-num">07</p>
+            <h2>Contact</h2>
+            <p>For all refund and billing enquiries: <a href="mailto:support@wanderwithai.com">support@wanderwithai.com</a></p>
+            <p>We aim to respond to all queries within 2 business days.</p>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>&copy; 2026 wanderwithai.com | The Future of Exploration</p>
+        <div class="footer-links">
+            <a href="/#pricing">Pricing</a>
+            <a href="/terms">Terms &amp; Conditions</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/refund">Refund Policy</a>
+        </div>
+    </footer>
+
+</body>
+</html>

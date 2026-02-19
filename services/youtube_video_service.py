@@ -362,18 +362,33 @@ Format your response as a structured JSON object."""
                 best_time_raw = data.get("best_time_to_visit", data.get("Best Time to Visit"))
                 if isinstance(best_time_raw, dict):
                     best_time = ", ".join(f"{k}: {v}" for k, v in best_time_raw.items())
+                elif isinstance(best_time_raw, list):
+                    best_time = ", ".join(
+                        (", ".join(f"{k}: {v}" for k, v in item.items()) if isinstance(item, dict) else str(item))
+                        for item in best_time_raw
+                    )
                 else:
                     best_time = best_time_raw
                 
                 budget_info_raw = data.get("budget_info", data.get("Budget Info"))
                 if isinstance(budget_info_raw, dict):
                     budget_info = ", ".join(f"{k}: {v}" for k, v in budget_info_raw.items())
+                elif isinstance(budget_info_raw, list):
+                    budget_info = "; ".join(
+                        (", ".join(f"{k}: {v}" for k, v in item.items()) if isinstance(item, dict) else str(item))
+                        for item in budget_info_raw
+                    )
                 else:
                     budget_info = budget_info_raw
                 
                 duration_raw = data.get("duration_suggested", data.get("Suggested Duration"))
                 if isinstance(duration_raw, dict):
                     duration = ", ".join(f"{k}: {v}" for k, v in duration_raw.items())
+                elif isinstance(duration_raw, list):
+                    duration = ", ".join(
+                        (", ".join(f"{k}: {v}" for k, v in item.items()) if isinstance(item, dict) else str(item))
+                        for item in duration_raw
+                    )
                 else:
                     duration = duration_raw
                 

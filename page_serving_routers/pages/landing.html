@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wander with AI | Video to Itinerary</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --purple: #9b4dca;
+            --purple-dim: rgba(155, 77, 202, 0.15);
+            --neon-yellow: #eaff00;
+            --neon-yellow-dim: rgba(234, 255, 0, 0.15);
+            --dark-bg: #0a0a0c;
+            --surface: rgba(155, 77, 202, 0.05);
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(155, 77, 202, 0.25);
+            --border-hover: rgba(234, 255, 0, 0.4);
+            --text: #ffffff;
+            --muted: #aaaaaa;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% -20%, #2a104a 0%, #0a0a0c 80%);
+            z-index: -1;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 8%;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 10, 12, 0.85);
+            backdrop-filter: blur(16px);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+        }
+
+        .logo span { color: var(--neon-yellow); }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-nav-login {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 10px 22px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-nav-login:hover {
+            color: var(--neon-yellow);
+            border-color: rgba(234, 255, 0, 0.4);
+        }
+
+        .btn-nav-cta {
+            background: var(--purple);
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(155, 77, 202, 0.35);
+            white-space: nowrap;
+        }
+
+        .btn-nav-cta:hover {
+            background: var(--neon-yellow);
+            color: black;
+            box-shadow: 0 0 25px rgba(234, 255, 0, 0.5);
+        }
+
+        header {
+            padding: 100px 8% 80px;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.8rem, 6vw, 4.5rem);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            line-height: 1.15;
+        }
+
+        .neon-text {
+            color: var(--neon-yellow);
+            text-shadow: 0 0 20px rgba(234, 255, 0, 0.6);
+        }
+
+        .hero-p {
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            font-size: 1.2rem;
+            color: var(--muted);
+        }
+
+        .hero-cta-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn-hero-primary {
+            background: var(--purple);
+            color: white;
+            border: none;
+            padding: 18px 48px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 20px rgba(155, 77, 202, 0.45);
+        }
+
+        .btn-hero-primary:hover {
+            background: var(--neon-yellow);
+            color: black;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(234, 255, 0, 0.6);
+        }
+
+        .btn-hero-primary svg {
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-hero-primary:hover svg {
+            transform: translateX(4px);
+        }
+
+        .coming-soon-tag {
+            display: inline-block;
+            margin-top: 24px;
+            color: var(--neon-yellow);
+            font-family: 'Orbitron';
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            opacity: 0.7;
+        }
+
+        .engine-section {
+            background: linear-gradient(90deg, transparent, rgba(155, 77, 202, 0.1), transparent);
+            padding: 60px 8%;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            margin: 40px 0;
+        }
+
+        .engine-stats {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item h2 {
+            font-family: 'Orbitron';
+            color: var(--neon-yellow);
+            font-size: 2.5rem;
+            text-shadow: 0 0 20px rgba(234, 255, 0, 0.4);
+        }
+
+        .stat-item p {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.8rem;
+            color: #fff;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+            gap: 2rem;
+            padding: 40px 8%;
+        }
+
+        .card {
+            background: var(--glass);
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            transition: 0.4s;
+        }
+
+        .card:hover {
+            border-color: var(--neon-yellow);
+            transform: translateY(-10px);
+            background: rgba(155, 77, 202, 0.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--purple-dim);
+            border: 1px solid rgba(155, 77, 202, 0.3);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            color: var(--neon-yellow);
+            flex-shrink: 0;
+        }
+
+        .card h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-yellow);
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+
+        .card p {
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        .ai-partner {
+            display: flex;
+            align-items: center;
+            gap: 60px;
+            padding: 100px 8%;
+            flex-wrap: wrap;
+        }
+
+        .ai-info { flex: 1; min-width: min(100%, 280px); }
+
+        .ai-info h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.6rem, 4vw, 2.5rem);
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .ai-info p {
+            color: var(--muted);
+            margin-bottom: 16px;
+            font-size: 1rem;
+        }
+
+        .chat-container {
+            flex: 1;
+            min-width: min(100%, 280px);
+            background: rgba(20, 10, 35, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .chat-bubble {
+            padding: 14px 20px;
+            border-radius: 16px;
+            margin-bottom: 14px;
+            max-width: 85%;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .ai-msg {
+            background: var(--purple);
+            color: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .user-msg {
+            background: rgba(234, 255, 0, 0.08);
+            border: 1px solid rgba(234, 255, 0, 0.15);
+            color: rgba(255,255,255,0.9);
+            margin-left: auto;
+            text-align: right;
+            border-bottom-right-radius: 4px;
+        }
+
+        .section-cta {
+            text-align: center;
+            padding: 80px 8%;
+            border-top: 1px solid var(--border);
+        }
+
+        .section-cta h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            margin-bottom: 16px;
+        }
+
+        .section-cta p {
+            color: var(--muted);
+            max-width: 500px;
+            margin: 0 auto 32px;
+            font-size: 1rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 3rem;
+            border-top: 1px solid var(--border);
+            color: #444;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 1rem 5%;
+            }
+
+            .logo {
+                font-size: 1.1rem;
+                letter-spacing: 1px;
+            }
+
+            .btn-nav-login {
+                display: none;
+            }
+
+            .btn-nav-cta {
+                padding: 9px 16px;
+                font-size: 0.7rem;
+            }
+
+            header {
+                padding: 60px 5% 50px;
+            }
+
+            .hero-p {
+                font-size: 0.95rem;
+                margin-bottom: 2rem;
+            }
+
+            .btn-hero-primary {
+                padding: 15px 32px;
+                font-size: 0.85rem;
+                width: 100%;
+                max-width: 320px;
+                justify-content: center;
+            }
+
+            .coming-soon-tag {
+                font-size: 0.65rem;
+                letter-spacing: 1px;
+                margin-top: 16px;
+            }
+
+            .engine-section {
+                padding: 40px 5%;
+                margin: 24px 0;
+            }
+
+            .engine-stats {
+                gap: 24px;
+            }
+
+            .stat-item {
+                min-width: 120px;
+            }
+
+            .stat-item h2 {
+                font-size: 1.8rem;
+            }
+
+            .stat-item p {
+                font-size: 0.7rem;
+                letter-spacing: 1px;
+            }
+
+            .grid-container {
+                padding: 24px 5%;
+                gap: 1.25rem;
+            }
+
+            .card {
+                padding: 24px;
+                border-radius: 18px;
+            }
+
+            .card h3 {
+                font-size: 0.95rem;
+            }
+
+            .card p {
+                font-size: 0.88rem;
+            }
+
+            .ai-partner {
+                padding: 60px 5%;
+                gap: 32px;
+                flex-direction: column;
+            }
+
+            .ai-info {
+                min-width: 0;
+                width: 100%;
+            }
+
+            .ai-info h2 {
+                margin-bottom: 14px;
+            }
+
+            .ai-info p {
+                font-size: 0.9rem;
+            }
+
+            .chat-container {
+                min-width: 0;
+                width: 100%;
+                padding: 18px;
+            }
+
+            .chat-bubble {
+                font-size: 0.85rem;
+                padding: 12px 16px;
+            }
+
+            .section-cta {
+                padding: 56px 5%;
+            }
+
+            .section-cta p {
+                font-size: 0.9rem;
+            }
+
+            footer {
+                padding: 2rem 5%;
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            nav {
+                padding: 0.9rem 4%;
+            }
+
+            .logo {
+                font-size: 1rem;
+            }
+
+            .btn-nav-cta {
+                padding: 8px 14px;
+                font-size: 0.65rem;
+                letter-spacing: 0.5px;
+            }
+
+            header {
+                padding: 50px 4% 40px;
+            }
+
+            h1 {
+                font-size: clamp(1.5rem, 8vw, 2.2rem);
+                line-height: 1.2;
+            }
+
+            .hero-p {
+                font-size: 0.9rem;
+                line-height: 1.65;
+            }
+
+            .btn-hero-primary {
+                padding: 14px 28px;
+                font-size: 0.8rem;
+                max-width: 100%;
+            }
+
+            .coming-soon-tag {
+                font-size: 0.6rem;
+                letter-spacing: 0.5px;
+            }
+
+            .engine-section {
+                padding: 32px 4%;
+                margin: 16px 0;
+            }
+
+            .engine-stats {
+                gap: 16px;
+            }
+
+            .stat-item {
+                min-width: 90px;
+                flex: 1;
+            }
+
+            .stat-item h2 {
+                font-size: 1.5rem;
+            }
+
+            .stat-item p {
+                font-size: 0.62rem;
+                letter-spacing: 0.5px;
+            }
+
+            .grid-container {
+                padding: 20px 4%;
+                gap: 1rem;
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 20px;
+                border-radius: 16px;
+            }
+
+            .card-icon {
+                width: 40px;
+                height: 40px;
+                margin-bottom: 14px;
+            }
+
+            .card h3 {
+                font-size: 0.9rem;
+                margin-bottom: 8px;
+            }
+
+            .card p {
+                font-size: 0.85rem;
+            }
+
+            .ai-partner {
+                padding: 40px 4%;
+                gap: 28px;
+            }
+
+            .ai-info h2 {
+                font-size: clamp(1.4rem, 6vw, 1.8rem);
+            }
+
+            .ai-info p {
+                font-size: 0.85rem;
+            }
+
+            .chat-container {
+                padding: 16px;
+                border-radius: 16px;
+            }
+
+            .chat-bubble {
+                font-size: 0.82rem;
+                padding: 10px 14px;
+                max-width: 90%;
+            }
+
+            .section-cta {
+                padding: 44px 4%;
+            }
+
+            .section-cta p {
+                font-size: 0.85rem;
+                margin-bottom: 24px;
+            }
+
+            footer {
+                padding: 1.5rem 4%;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .logo {
+                font-size: 0.9rem;
+                letter-spacing: 0.5px;
+            }
+
+            h1 {
+                font-size: 1.4rem;
+            }
+
+            .btn-hero-primary {
+                padding: 13px 22px;
+                font-size: 0.75rem;
+            }
+
+            .stat-item h2 {
+                font-size: 1.3rem;
+            }
+
+            .engine-stats {
+                gap: 12px;
+            }
+        }
+
+        .pricing-section {
+            padding: 100px 8%;
+            text-align: center;
+            border-top: 1px solid var(--border);
+        }
+
+        .pricing-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.68rem;
+            letter-spacing: 4px;
+            color: var(--purple);
+            margin-bottom: 16px;
+        }
+
+        .pricing-header h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            margin-bottom: 16px;
+        }
+
+        .pricing-sub {
+            color: var(--muted);
+            font-size: 1rem;
+            max-width: 520px;
+            margin: 0 auto 60px;
+            line-height: 1.7;
+        }
+
+        .pricing-grid {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .pricing-card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 48px 44px;
+            width: 100%;
+            max-width: 500px;
+            text-align: left;
+            transition: 0.4s;
+        }
+
+        .pricing-card:hover {
+            border-color: var(--border-hover);
+            box-shadow: 0 20px 60px rgba(155, 77, 202, 0.18);
+        }
+
+        .pricing-badge {
+            display: inline-block;
+            background: var(--purple-dim);
+            border: 1px solid rgba(155, 77, 202, 0.35);
+            color: var(--purple);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.62rem;
+            letter-spacing: 2px;
+            padding: 6px 16px;
+            border-radius: 50px;
+            margin-bottom: 32px;
+        }
+
+        .pricing-amount {
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+
+        .price-currency {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            color: var(--neon-yellow);
+            margin-top: 8px;
+        }
+
+        .price-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4.5rem;
+            color: var(--neon-yellow);
+            text-shadow: 0 0 24px rgba(234, 255, 0, 0.45);
+            line-height: 1;
+        }
+
+        .price-unit {
+            color: var(--muted);
+            font-size: 1rem;
+            margin-left: 6px;
+            align-self: flex-end;
+            padding-bottom: 8px;
+        }
+
+        .pricing-desc {
+            color: var(--muted);
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            line-height: 1.75;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 32px;
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .pricing-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            color: rgba(255,255,255,0.85);
+            font-size: 0.92rem;
+        }
+
+        .check-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            color: var(--neon-yellow);
+            margin-top: 1px;
+        }
+
+        .pricing-note {
+            text-align: center;
+            font-size: 0.78rem;
+            color: #444;
+            margin-top: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 28px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .footer-links a {
+            color: #555;
+            text-decoration: none;
+            font-size: 0.78rem;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--neon-yellow);
+        }
+
+        @media (max-width: 768px) {
+            .pricing-section { padding: 60px 5%; }
+            .pricing-sub { margin-bottom: 40px; }
+            .pricing-card { padding: 32px 28px; }
+            .price-value { font-size: 3.5rem; }
+        }
+
+        @media (max-width: 480px) {
+            .pricing-section { padding: 44px 4%; }
+            .pricing-card { padding: 28px 22px; }
+            .price-value { font-size: 3rem; }
+            .price-currency { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <nav>
+        <div class="logo">WANDER<span>WITH</span>AI</div>
+        <div class="nav-actions">
+            <a href="#pricing" class="btn-nav-login">Pricing</a>
+            <a href="/login" class="btn-nav-login">Login</a>
+            <a href="/login" class="btn-nav-cta">Get Started</a>
+        </div>
+    </nav>
+
+    <header>
+        <h1>VIDEO TO <span class="neon-text">ITINERARY</span></h1>
+        <p class="hero-p">Paste a YouTube travel vlog. Our AI extracts every location, hidden gem, and logistics detail and builds your perfect day-by-day plan in seconds.</p>
+
+        <div class="hero-cta-group">
+            <a href="/login" class="btn-hero-primary">
+                Get Started
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+        </div>
+        <div class="coming-soon-tag">AI-POWERED • ZERO EFFORT • TRAVEL SMARTER</div>
+    </header>
+
+    <section class="engine-section">
+        <div class="engine-stats">
+            <div class="stat-item">
+                <h2>5</h2>
+                <p>Advanced AI Models Linked</p>
+            </div>
+            <div class="stat-item">
+                <h2>500M+</h2>
+                <p>Local &amp; Int'l Data Points</p>
+            </div>
+            <div class="stat-item">
+                <h2>∞</h2>
+                <p>Global Understanding</p>
+            </div>
+        </div>
+        <p style="margin-top: 25px; font-size: 0.9rem; color: var(--purple); font-weight: bold; letter-spacing: 1px;">POWERED BY THE MULTI-ENGINE ARCHITECTURE</p>
+    </section>
+
+    <div class="grid-container">
+        <div class="card">
+            <div class="card-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
+                    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
+                </svg>
+            </div>
+            <h3>Universal Video Extraction</h3>
+            <p>Turn any YouTube URL into a step-by-step travel plan with mapped coordinates and logistics details.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+            </div>
+            <h3>Travel Tracker</h3>
+            <p>Visualize your progress. Keep track of where you've conquered and what's remaining on your map.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+            </div>
+            <h3>Wishlist Tracker</h3>
+            <p>Save dream locations directly from your favorite vlogs to your organized bucket list.</p>
+        </div>
+    </div>
+
+    <section class="ai-partner">
+        <div class="ai-info">
+            <h2>Your Infinite <br><span class="neon-text">Travel Partner</span></h2>
+            <p>Solo travel is about freedom, not loneliness. WanderAI stays in the background until you need it a constant AI companion that won't break your immersion.</p>
+            <p><strong>Confused about your next trip?</strong> Ask WanderAI based on your specific mood and travel history.</p>
+        </div>
+        <div class="chat-container">
+            <div class="chat-bubble user-msg">Where should I go next?</div>
+            <div class="chat-bubble ai-msg">Based on your love for neon cities and hiking, Tokyo or Seoul would be perfect. I can map out a 7-day route from Shinjuku to Mt. Fuji now. Shall I?</div>
+        </div>
+    </section>
+
+    <section class="pricing-section" id="pricing">
+        <div class="pricing-header">
+            <p class="pricing-label">PRICING</p>
+            <h2>Simple. <span class="neon-text">Transparent.</span></h2>
+            <p class="pricing-sub">No subscriptions. No hidden fees. Buy credits and use them anytime your generated itineraries never expire.</p>
+        </div>
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <div class="pricing-badge">PAY AS YOU GO</div>
+                <div class="pricing-amount">
+                    <span class="price-currency">₹</span>
+                    <span class="price-value">599</span>
+                    <span class="price-unit">/ itinerary</span>
+                </div>
+                <p class="pricing-desc">Recharge credits whenever you like and generate AI itineraries on demand. No monthly commitment, no lock-in.</p>
+                <ul class="pricing-features">
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Full AI itinerary extracted from any YouTube travel vlog
+                    </li>
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Day-by-day plan with mapped coordinates &amp; logistics
+                    </li>
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Exportable PDF with beautiful custom formatting
+                    </li>
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Shareable link for your travel companions
+                    </li>
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Credits never expire
+                    </li>
+                </ul>
+                <a href="/login" class="btn-hero-primary" style="width:100%; justify-content:center;">
+                    Start Planning
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </a>
+                <p class="pricing-note">Minimum recharge ₹599 &nbsp;·&nbsp; Secure payments via Razorpay</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-cta">
+        <h2>Ready to <span class="neon-text">explore?</span></h2>
+        <p>Join the future of travel planning. Turn any travel vlog into your perfect itinerary in seconds.</p>
+        <a href="/login" class="btn-hero-primary">
+            Start for Free
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+        </a>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 wanderwithai.com | The Future of Exploration</p>
+        <div class="footer-links">
+            <a href="#pricing">Pricing</a>
+            <a href="/terms">Terms &amp; Conditions</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/refund">Refund Policy</a>
+        </div>
+    </footer>
+
+</body>
+</html>

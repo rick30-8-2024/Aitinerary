@@ -1,4 +1,4 @@
-"""Main FastAPI application entry point for Aitinerary."""
+"""Main FastAPI application entry point for WANDERWITHAI."""
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI

@@ -1,1 +1,1 @@
-"""API routers module for Aitinerary application."""
+"""API routers module for WANDERWITHAI application."""
