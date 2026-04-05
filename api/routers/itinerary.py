@@ -10,7 +10,8 @@ import asyncio
 import logging
 import traceback
 from typing import Optional, Literal, Any
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
+import copy
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field, HttpUrl
@@ -31,7 +32,7 @@ from models.itinerary import (
     TranscriptAnalysis,
 )
 from services.youtube_video_service import youtube_video_service, YouTubeVideoServiceError
-from services.gemini_service import gemini_service, GeminiServiceError
+from services.gemini_service import gemini_service, GeminiServiceError, apply_itinerary_changes
 from services.payment_service import payment_service
 from config.settings import settings
 
@@ -80,8 +81,10 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     """Response schema for itinerary chat."""
-    
+
     response: str
+    changes_applied: bool = False
+    updated_itinerary: Optional[dict] = None
 
 
 class ChatHistoryResponse(BaseModel):
@@ -612,7 +615,7 @@ async def chat_about_itinerary(
     request: ChatRequest,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Chat with AI about the itinerary using Google Search grounding."""
+    """Chat with AI about the itinerary using Google Search grounding + itinerary modification tools."""
     collection = get_itineraries_collection()
 
     try:
@@ -643,19 +646,114 @@ async def chat_about_itinerary(
     }
     itinerary_context = json.dumps(context_fields, default=str)
 
+    # Build "today" context from start_date
+    today_context = None
+    try:
+        user_prefs = itinerary.get("user_preferences", {})
+        start_date_str = user_prefs.get("start_date") if user_prefs else None
+        days_list = itinerary.get("days", [])
+
+        if start_date_str and days_list:
+            start_date = date.fromisoformat(start_date_str)
+            today = date.today()
+            day_offset = (today - start_date).days  # 0-based: day 0 = first day
+
+            if 0 <= day_offset < len(days_list):
+                current_day_num = day_offset + 1
+                current_day_data = days_list[day_offset]
+                today_context = (
+                    f"Today is {today.strftime('%B %d, %Y')} — Day {current_day_num} of the trip."
+                    f"\nToday's theme: {current_day_data.get('theme', 'N/A')}"
+                    f"\nToday's planned activities: {json.dumps(current_day_data.get('activities', []), default=str)}"
+                    f"\nToday's planned meals: {json.dumps(current_day_data.get('meals', []), default=str)}"
+                )
+            elif day_offset < 0:
+                days_until = abs(day_offset)
+                today_context = (
+                    f"Today is {today.strftime('%B %d, %Y')}. "
+                    f"The trip hasn't started yet — it begins in {days_until} day{'s' if days_until != 1 else ''} "
+                    f"on {start_date.strftime('%B %d, %Y')}."
+                )
+            else:
+                today_context = (
+                    f"Today is {today.strftime('%B %d, %Y')}. "
+                    f"The trip has already ended (it was {len(days_list)} days starting {start_date.strftime('%B %d, %Y')})."
+                )
+    except (ValueError, TypeError) as e:
+        logger.debug(f"Could not compute today context: {e}")
+
     try:
         logger.info(f"Chat request for itinerary {itinerary_id} from user {current_user.id}")
         logger.debug(f"Chat message: {request.message[:100]}...")
         logger.debug(f"Chat history length: {len(request.history) if request.history else 0}")
         logger.debug(f"Itinerary context length: {len(itinerary_context)} chars")
+        if today_context:
+            logger.debug(f"Today context: {today_context[:200]}")
 
-        response_text = await gemini_service.chat_with_context(
+        result = await gemini_service.chat_with_context(
             message=request.message,
             itinerary_context=itinerary_context,
-            chat_history=request.history
+            chat_history=request.history,
+            today_context=today_context,
         )
+
+        response_text = result["response"]
+        tool_call = result.get("tool_call")
+        changes_applied = False
+        updated_itinerary = None
+
+        # If Gemini requested itinerary modifications, apply them
+        if tool_call and tool_call.get("changes"):
+            logger.info(f"Applying {len(tool_call['changes'])} modifications to itinerary {itinerary_id}")
+
+            # Work on a copy of the itinerary fields that can be modified
+            mutable_fields = {
+                "title": itinerary.get("title"),
+                "destination": itinerary.get("destination"),
+                "country": itinerary.get("country"),
+                "summary": itinerary.get("summary"),
+                "currency": itinerary.get("currency"),
+                "total_budget_estimate": itinerary.get("total_budget_estimate"),
+                "budget_breakdown": itinerary.get("budget_breakdown"),
+                "accommodation_note": itinerary.get("accommodation_note"),
+                "general_tips": itinerary.get("general_tips"),
+                "packing_suggestions": itinerary.get("packing_suggestions"),
+                "language_phrases": itinerary.get("language_phrases"),
+                "best_time_to_visit": itinerary.get("best_time_to_visit"),
+                "weather_info": itinerary.get("weather_info"),
+                "days": copy.deepcopy(itinerary.get("days", [])),
+            }
+
+            modified_data, errors = apply_itinerary_changes(mutable_fields, tool_call["changes"])
+
+            if errors:
+                logger.warning(f"Some changes failed for {itinerary_id}: {errors}")
+                response_text += f"\n\n(Note: some changes could not be applied: {'; '.join(errors)})"
+
+            # Save modifications to MongoDB
+            modified_data["updated_at"] = datetime.utcnow()
+            try:
+                await collection.update_one(
+                    {"_id": ObjectId(itinerary_id)},
+                    {"$set": modified_data}
+                )
+                changes_applied = True
+                # Return the full updated itinerary for frontend refresh
+                updated_doc = await collection.find_one({"_id": ObjectId(itinerary_id)})
+                if updated_doc:
+                    updated_doc["id"] = str(updated_doc.pop("_id"))
+                    updated_doc.pop("user_id", None)
+                    updated_doc.pop("chat_history", None)
+                    updated_doc.pop("transcript_analysis", None)
+                    updated_itinerary = json.loads(json.dumps(updated_doc, default=str))
+                logger.info(f"Itinerary {itinerary_id} updated successfully via chat")
+            except Exception as update_err:
+                logger.error(f"Failed to save itinerary modifications for {itinerary_id}: {update_err}")
+                response_text += "\n\n(Note: I suggested the changes but couldn't save them. Please try again.)"
+
         logger.info(f"Chat response generated successfully for itinerary {itinerary_id}")
 
+        # Persist chat history
         try:
             await collection.update_one(
                 {"_id": ObjectId(itinerary_id)},
@@ -673,7 +771,11 @@ async def chat_about_itinerary(
         except Exception as save_err:
             logger.warning(f"Failed to persist chat history for {itinerary_id}: {save_err}")
 
-        return ChatResponse(response=response_text)
+        return ChatResponse(
+            response=response_text,
+            changes_applied=changes_applied,
+            updated_itinerary=updated_itinerary,
+        )
     except GeminiServiceError as e:
         logger.error(f"GeminiServiceError in chat for itinerary {itinerary_id}: {str(e)}")
         logger.error(traceback.format_exc())

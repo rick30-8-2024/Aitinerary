@@ -1432,6 +1432,19 @@ async function sendChatMessage() {
             assistantMsgEl.className = 'chat-message assistant';
             assistantMsgEl.innerHTML = `<div class="chat-bubble">${formatChatResponse(assistantMsg)}</div>`;
             messagesEl.appendChild(assistantMsgEl);
+
+            // If the AI made changes to the itinerary, refresh the display
+            if (data.changes_applied && data.updated_itinerary) {
+                // Update the global itinerary data
+                itineraryData = data.updated_itinerary;
+                // Re-render all sections
+                renderItinerary();
+                // Show a small indicator that changes were applied
+                const changeIndicator = document.createElement('div');
+                changeIndicator.className = 'chat-message system';
+                changeIndicator.innerHTML = `<div class="chat-bubble chat-change-indicator">✅ Itinerary updated</div>`;
+                messagesEl.appendChild(changeIndicator);
+            }
         } else {
             const errorMsgEl = document.createElement('div');
             errorMsgEl.className = 'chat-message assistant';

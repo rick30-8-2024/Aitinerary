@@ -8,10 +8,11 @@ using Google's Gemini model with a dual-agent architecture:
 """
 
 import json
+import copy
 import re
 import logging
 import traceback
-from typing import Optional
+from typing import Optional, Any
 
 import google.generativeai as genai
 import google.ai.generativelanguage as glm
@@ -39,6 +40,82 @@ logger = logging.getLogger(__name__)
 class GeminiServiceError(Exception):
     """Base exception for Gemini service errors."""
     pass
+
+
+class ItineraryModification(BaseModel):
+    """Represents a single modification to an itinerary."""
+    operation: str  # "update", "add", "remove", "swap"
+    path: str  # JSON path like "days[0].activities[1].place_name"
+    value: Optional[object] = None  # New value for update/add
+    swap_with: Optional[str] = None  # Path to swap with (for swap operation)
+    position: Optional[int] = None  # Position for add operation
+
+
+def _create_modify_itinerary_tool():
+    """Create the modify_itinerary function declaration for Gemini tool calling."""
+    return genai_types.FunctionDeclaration(
+        name="modify_itinerary",
+        description=(
+            "Modify the user's travel itinerary. Use this when the user asks to change, add, remove, or swap "
+            "anything in their itinerary (activities, meals, days, budget, tips, etc.). "
+            "You can batch multiple changes in a single call. "
+            "IMPORTANT: Always provide the 'explanation' describing what you changed and why."
+        ),
+        parameters=genai_types.Schema(
+            type="OBJECT",
+            properties={
+                "changes": genai_types.Schema(
+                    type="ARRAY",
+                    description="List of modifications to apply to the itinerary.",
+                    items=genai_types.Schema(
+                        type="OBJECT",
+                        properties={
+                            "operation": genai_types.Schema(
+                                type="STRING",
+                                description="Type of operation: 'update' (change a value), 'add' (insert new item into an array), 'remove' (delete an item from an array), 'swap' (swap two items).",
+                                enum=["update", "add", "remove", "swap"],
+                            ),
+                            "path": genai_types.Schema(
+                                type="STRING",
+                                description=(
+                                    "JSON path to the field to modify. Use dot notation with array indices. "
+                                    "Examples: 'days[0].activities[1].place_name', 'days[2].meals[0]', "
+                                    "'general_tips', 'summary', 'days[0].theme', 'budget_breakdown.food'. "
+                                    "For top-level fields: 'title', 'summary', 'general_tips', 'packing_suggestions', etc. "
+                                    "For day-level: 'days[N].theme', 'days[N].summary', 'days[N].activities[M]', 'days[N].meals[M]'. "
+                                    "For activity fields: 'days[N].activities[M].place_name', 'days[N].activities[M].estimated_cost', etc. "
+                                    "For meal fields: 'days[N].meals[M].place_name', 'days[N].meals[M].cuisine', etc."
+                                ),
+                            ),
+                            "value": genai_types.Schema(
+                                type="STRING",
+                                description=(
+                                    "The new value as a JSON string. For simple values use the value directly (e.g., '\"New Place Name\"'). "
+                                    "For objects (adding a full activity or meal), provide the full JSON object as a string. "
+                                    "For arrays (replacing tips list), provide the JSON array as a string. "
+                                    "Not needed for 'remove' or 'swap' operations."
+                                ),
+                            ),
+                            "swap_with": genai_types.Schema(
+                                type="STRING",
+                                description="For 'swap' operation only: the JSON path of the second item to swap with. E.g., 'days[1]' to swap with the item at 'path'.",
+                            ),
+                            "position": genai_types.Schema(
+                                type="INTEGER",
+                                description="For 'add' operation only: the index position to insert at. If omitted, appends to the end of the array.",
+                            ),
+                        },
+                        required=["operation", "path"],
+                    ),
+                ),
+                "explanation": genai_types.Schema(
+                    type="STRING",
+                    description="A natural language explanation of what changes were made and why, to show to the user.",
+                ),
+            },
+            required=["changes", "explanation"],
+        ),
+    )
 
 
 class APIKeyNotConfiguredError(GeminiServiceError):
@@ -75,6 +152,121 @@ def _create_search_tool() -> glm.Tool:
             )
         ]
     )
+
+
+def _parse_json_path(path: str) -> list:
+    """
+    Parse a JSON path string into a list of keys/indices.
+    E.g., 'days[0].activities[1].place_name' -> ['days', 0, 'activities', 1, 'place_name']
+    """
+    segments = []
+    for part in path.split('.'):
+        # Check for array index: e.g., "days[0]"
+        match = re.match(r'^(\w+)\[(\d+)\]$', part)
+        if match:
+            segments.append(match.group(1))
+            segments.append(int(match.group(2)))
+        else:
+            segments.append(part)
+    return segments
+
+
+def _navigate_to(data: dict, segments: list):
+    """Navigate into a nested dict/list and return (parent, final_key)."""
+    current = data
+    for seg in segments[:-1]:
+        current = current[seg]
+    return current, segments[-1]
+
+
+def apply_itinerary_changes(itinerary_data: dict, changes: list[dict]) -> tuple[dict, list[str]]:
+    """
+    Apply a list of modifications to an itinerary dict.
+
+    Args:
+        itinerary_data: The full itinerary document dict (mutable, will be modified in place).
+        changes: List of change dicts from the Gemini tool call, each with:
+            - operation: "update", "add", "remove", "swap"
+            - path: JSON path string
+            - value: new value (for update/add), as raw value or JSON string
+            - swap_with: path to swap with (for swap)
+            - position: insert index (for add)
+
+    Returns:
+        Tuple of (modified itinerary_data, list of error messages for any failed changes)
+    """
+    errors = []
+
+    for i, change in enumerate(changes):
+        try:
+            op = change.get("operation")
+            path = change.get("path", "")
+            raw_value = change.get("value")
+            swap_path = change.get("swap_with")
+            position = change.get("position")
+
+            # Parse the value — it may be a JSON string or already a native type
+            value = raw_value
+            if isinstance(raw_value, str):
+                try:
+                    value = json.loads(raw_value)
+                except (json.JSONDecodeError, TypeError):
+                    value = raw_value  # Keep as plain string
+
+            segments = _parse_json_path(path)
+
+            if op == "update":
+                parent, key = _navigate_to(itinerary_data, segments)
+                parent[key] = value
+
+            elif op == "add":
+                # Navigate to the array, then insert or append
+                parent, key = _navigate_to(itinerary_data, segments)
+                target = parent[key]
+                if not isinstance(target, list):
+                    errors.append(f"Change {i}: path '{path}' does not point to an array for 'add'")
+                    continue
+                if position is not None:
+                    target.insert(int(position), value)
+                else:
+                    target.append(value)
+
+            elif op == "remove":
+                parent, key = _navigate_to(itinerary_data, segments)
+                if isinstance(parent, list) and isinstance(key, int):
+                    if 0 <= key < len(parent):
+                        parent.pop(key)
+                    else:
+                        errors.append(f"Change {i}: index {key} out of range for path '{path}'")
+                elif isinstance(parent, dict) and isinstance(key, str):
+                    if key in parent:
+                        del parent[key]
+                    else:
+                        errors.append(f"Change {i}: key '{key}' not found for path '{path}'")
+                else:
+                    errors.append(f"Change {i}: cannot remove at path '{path}'")
+
+            elif op == "swap":
+                if not swap_path:
+                    errors.append(f"Change {i}: 'swap' requires 'swap_with' path")
+                    continue
+                seg_a = _parse_json_path(path)
+                seg_b = _parse_json_path(swap_path)
+                parent_a, key_a = _navigate_to(itinerary_data, seg_a)
+                parent_b, key_b = _navigate_to(itinerary_data, seg_b)
+                # Deep copy to avoid reference issues
+                val_a = copy.deepcopy(parent_a[key_a])
+                val_b = copy.deepcopy(parent_b[key_b])
+                parent_a[key_a] = val_b
+                parent_b[key_b] = val_a
+
+            else:
+                errors.append(f"Change {i}: unknown operation '{op}'")
+
+        except (KeyError, IndexError, TypeError) as e:
+            errors.append(f"Change {i}: failed to apply - {type(e).__name__}: {str(e)}")
+
+    return itinerary_data, errors
 
 
 class GeminiService:
@@ -890,17 +1082,26 @@ RESPOND ONLY WITH THE JSON OBJECT, no additional text."""
         except Exception as e:
             raise GenerationError(f"Itinerary refinement failed: {str(e)}")
     
-    async def chat_with_context(self, message: str, itinerary_context: str, chat_history: list[dict] = None) -> str:
+    async def chat_with_context(
+        self,
+        message: str,
+        itinerary_context: str,
+        chat_history: list[dict] = None,
+        today_context: str = None,
+    ) -> dict:
         """
-        Chat with the user about their trip using Google Search grounding for real-time info.
+        Chat with the user about their trip using Google Search grounding + itinerary modification tools.
 
         Args:
             message: The user's chat message
             itinerary_context: JSON string of the itinerary details for context
             chat_history: List of previous chat messages [{role, content}, ...]
+            today_context: Optional string describing what day of the trip today is
 
         Returns:
-            AI response as plain text
+            Dict with keys:
+                - response: str (the text response to show the user)
+                - tool_call: Optional dict with 'changes' and 'explanation' if modification was requested
         """
         client = self._get_genai_client()
 
@@ -910,12 +1111,17 @@ RESPOND ONLY WITH THE JSON OBJECT, no additional text."""
                 role = "User" if msg.get("role") == "user" else "Assistant"
                 history_text += f"{role}: {msg.get('content', '')}\n"
 
+        today_section = ""
+        if today_context:
+            today_section = f"\nTODAY'S CONTEXT:\n{today_context}\n"
+
         chat_prompt = f"""You are a helpful travel assistant for a trip. You have full context of the user's itinerary below.
 Answer the user's question using the itinerary context AND by searching the internet for real-time, accurate information when needed.
+You also have the ability to MODIFY the itinerary when the user asks for changes.
 
 ITINERARY CONTEXT:
 {itinerary_context}
-
+{today_section}
 {"CONVERSATION HISTORY:" + chr(10) + history_text if history_text else ""}
 
 USER MESSAGE: {message}
@@ -927,7 +1133,17 @@ INSTRUCTIONS:
 - If suggesting alternatives or new places, mention approximate costs if possible.
 - Format your response in a readable way with short paragraphs. Use markdown sparingly (bold for emphasis only).
 - Do NOT use headers or bullet lists unless specifically asked.
-- Keep responses focused and under 300 words unless the user asks for detailed info."""
+- Keep responses focused and under 300 words unless the user asks for detailed info.
+
+MODIFICATION INSTRUCTIONS:
+- If the user asks you to CHANGE, ADD, REMOVE, SWAP, or MODIFY anything in their itinerary, use the modify_itinerary tool.
+- When referring to days, use 0-based indexing: Day 1 = days[0], Day 2 = days[1], etc.
+- When referring to activities or meals within a day, also use 0-based indexing.
+- For adding a new activity, provide the full activity object with at least: place_name, description, estimated_cost.
+- For adding a new meal, provide: meal_type, place_name, cuisine, estimated_cost.
+- Always provide a friendly explanation of the changes you made.
+- If the user's request is ambiguous, ask for clarification instead of making assumptions.
+- You can make multiple changes in a single modify_itinerary call."""
 
         try:
             logger.info(f"Sending chat request to Gemini model (new SDK): {self.MODEL_NAME}")
@@ -939,14 +1155,45 @@ INSTRUCTIONS:
                 config=genai_types.GenerateContentConfig(
                     temperature=0.7,
                     top_p=0.95,
-                    tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
+                    tools=[
+                        genai_types.Tool(
+                            google_search=genai_types.GoogleSearch(),
+                            function_declarations=[_create_modify_itinerary_tool()],
+                        ),
+                    ],
+                    tool_config=genai_types.ToolConfig(
+                        include_server_side_tool_invocations=True,
+                    ),
                 ),
             )
 
             logger.info("Chat response received from Gemini")
-            logger.debug(f"Response text length: {len(response.text) if response.text else 0}")
 
-            return response.text or "I couldn't generate a response. Please try again."
+            # Check for function calls in the response
+            tool_call_data = None
+            text_response = ""
+
+            if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if part.text:
+                        text_response += part.text
+                    if part.function_call and part.function_call.name == "modify_itinerary":
+                        args = dict(part.function_call.args) if part.function_call.args else {}
+                        logger.info(f"Gemini requested itinerary modification: {json.dumps(args, default=str)[:500]}")
+                        tool_call_data = {
+                            "changes": args.get("changes", []),
+                            "explanation": args.get("explanation", "Changes applied to your itinerary."),
+                        }
+
+            if not text_response and tool_call_data:
+                text_response = tool_call_data["explanation"]
+            elif not text_response:
+                text_response = "I couldn't generate a response. Please try again."
+
+            return {
+                "response": text_response,
+                "tool_call": tool_call_data,
+            }
 
         except Exception as e:
             logger.error(f"Chat failed with {type(e).__name__}: {str(e)}")
